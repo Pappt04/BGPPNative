@@ -17,6 +17,7 @@ import st.misa.bgpp_native.bgpp.domain.model.Line
 import st.misa.bgpp_native.bgpp.domain.model.Station
 import st.misa.bgpp_native.bgpp.domain.repository.BGPPDataRepository
 import st.misa.bgpp_native.bgpp.domain.repository.StationDBRepository
+import st.misa.bgpp_native.core.domain.location.LocationRepository
 import st.misa.bgpp_native.core.domain.util.NetworkError
 import st.misa.bgpp_native.core.domain.util.Result
 import st.misa.bgpp_native.core.domain.util.StringProvider
@@ -24,6 +25,7 @@ import st.misa.bgpp_native.core.domain.util.StringProvider
 class ArrivalsViewModel(
     private val remoteRepository: BGPPDataRepository,
     private val stationRepository: StationDBRepository,
+    private val locationRepository: LocationRepository,
     private val stringProvider: StringProvider,
     private val args: Args,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
@@ -107,7 +109,8 @@ class ArrivalsViewModel(
         _state.update {
             it.copy(
                 stationName = station.name,
-                isFavorite = station.favorite
+                isFavorite = station.favorite,
+                stationCoords = station.coords
             )
         }
 
@@ -137,6 +140,17 @@ class ArrivalsViewModel(
                         expandedLineIds = uiLines.firstOrNull()?.let { line -> setOf(line.number) } ?: emptySet()
                     )
                 }
+            }
+        }
+    }
+
+    fun onOpenMap() {
+        viewModelScope.launch {
+            when (val locationResult = locationRepository.getCurrentLocation()) {
+                is Result.Success -> {
+                    _state.update { it.copy(userLocation = locationResult.data) }
+                }
+                else -> Unit
             }
         }
     }

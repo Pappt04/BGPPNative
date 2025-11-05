@@ -8,6 +8,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import st.misa.bgpp_native.R
@@ -59,7 +60,8 @@ class SearchViewModel(
         val preferences = _state.value.preferences
         viewModelScope.launch {
             val (origin, usingCityCenter) = determineOrigin(city, attemptLocation = false)
-            _state.value = _state.value.copy(isLoading = true)
+            updateOriginState(origin, usingCityCenter)
+            _state.update { it.copy(isLoading = true) }
             loadStationsForCurrentMode(
                 city = city,
                 preferences = preferences,
@@ -76,6 +78,28 @@ class SearchViewModel(
 
     fun onClosePreferences() {
         _state.value = _state.value.copy(isPreferencesDialogVisible = false)
+    }
+
+    fun onOpenStationExplorer() {
+        val currentState = _state.value
+        val city = currentState.selectedCity ?: return
+        if (currentState.stations.isEmpty()) {
+            _state.value = currentState.copy(
+                errorMessage = stringProvider.getString(R.string.station_map_error_no_seed)
+            )
+            return
+        }
+        _state.value = currentState.copy(
+            isStationMapVisible = true,
+            stationMapSeed = currentState.stations
+        )
+    }
+
+    fun onCloseStationExplorer() {
+        _state.value = _state.value.copy(
+            isStationMapVisible = false,
+            stationMapSeed = emptyList()
+        )
     }
 
     fun onPreferencesApplied(preferences: SearchPreferences) {
@@ -99,6 +123,7 @@ class SearchViewModel(
                     syncCity(selectedCity)
                 }
                 val (origin, usingCityCenter) = determineOrigin(selectedCity, attemptLocation = lastKnownCoords == null)
+                updateOriginState(origin, usingCityCenter)
                 loadStationsForCurrentMode(
                     city = selectedCity,
                     preferences = normalized,
@@ -123,7 +148,7 @@ class SearchViewModel(
     }
 
     private suspend fun loadInitial(preferences: SearchPreferences) {
-        _state.value = _state.value.copy(isLoading = true, errorMessage = null)
+        _state.update { it.copy(isLoading = true, errorMessage = null) }
         val citiesResult = withContext(ioDispatcher) { remoteRepository.getCities() }
         when (citiesResult) {
             is Result.Error -> {
@@ -162,6 +187,7 @@ class SearchViewModel(
 
                 val usingCityCenter = location == null
                 val origin = location ?: selectedCity.center
+                updateOriginState(origin, usingCityCenter)
                 loadStationsForCurrentMode(
                     city = selectedCity,
                     preferences = updatedPreferences,
@@ -235,12 +261,14 @@ class SearchViewModel(
             )
         } else stations.map { it.toUi() }
 
-        _state.value = _state.value.copy(
-            stations = enriched,
-            isLoading = false,
-            errorMessage = if (enriched.isNotEmpty()) null else _state.value.errorMessage,
-            usingCityCenter = usingCityCenter
-        )
+        _state.update {
+            it.copy(
+                stations = enriched,
+                isLoading = false,
+                errorMessage = if (enriched.isNotEmpty()) null else it.errorMessage,
+                usingCityCenter = usingCityCenter
+            )
+        }
     }
 
     private suspend fun enrichStations(
@@ -356,6 +384,16 @@ class SearchViewModel(
         return origin to usingCityCenter
     }
 
+    private fun updateOriginState(origin: Coords, usingCityCenter: Boolean) {
+        _state.update {
+            it.copy(
+                mapOrigin = origin,
+                userLocation = if (usingCityCenter) null else lastKnownCoords,
+                usingCityCenter = usingCityCenter
+            )
+        }
+    }
+
     private suspend fun resolveUserLocation(): Coords? {
         val locationResult = locationRepository.getCurrentLocation()
         return when (locationResult) {
@@ -430,4 +468,3 @@ class SearchViewModel(
         private const val MAX_WALKING_REQUESTS = 15
     }
 }
-

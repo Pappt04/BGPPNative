@@ -11,6 +11,7 @@
     <string name="search_using_city_center">Using city center for distances</string>
     <string name="search_no_results">No stations match your criteria.</string>
     <string name="search_retry">Retry</string>
+    <string name="station_map_error_no_seed">No nearby stations yet. Try refreshing first.</string>
 
     <!-- Preferences dialog -->
     <string name="search_preferences_title">Search preferences</string>
@@ -67,4 +68,24 @@
     <string name="arrivals_notification_stations">Stations</string>
     <string name="arrivals_notification_minutes_label">Minutes away</string>
     <string name="arrivals_notification_stations_label">Stations away</string>
+
+    <!-- Station map dialog -->
+    <string name="station_map_title">Stations</string>
+    <string name="station_map_subtitle">Thunderforest Transport map</string>
+    <string name="station_map_focus_nearest">Nearest area</string>
+    <string name="station_map_using_city_center">Using city center</string>
+    <string name="station_map_hint_tap_marker">Tap a pin to preview and choose a stop.</string>
+    <string name="station_map_action_arrivals">Show arrivals</string>
+    <string name="station_map_action_close">Close map</string>
+    <string name="station_map_station_id">ID • %1$s</string>
+    <string name="station_map_distance_walking">%1$.1f km • %2$d min walk</string>
+    <string name="station_map_distance_walking_only">%1$.1f km walk</string>
+    <string name="station_map_distance_air">%1$.0f m away</string>
+    <string name="station_map_distance_unknown">Distance unavailable</string>
+    <string name="station_map_empty_viewport">No stations in view. Pan or zoom to search a new area.</string>
+    <string name="station_map_recenter_content_description">Recenter map</string>
+    <string name="arrivals_map_eta_minutes">Next bus in %1$d min</string>
+    <string name="arrivals_map_eta_stops">%1$d min • %2$d stops away</string>
+    <string name="arrivals_map_eta_unknown">Live arrival time unavailable</string>
+    <string name="arrivals_map_current_station">Currently near %1$s</string>
 </resources>

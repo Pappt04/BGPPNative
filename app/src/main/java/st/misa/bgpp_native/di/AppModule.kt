@@ -17,6 +17,11 @@ import st.misa.bgpp_native.bgpp.domain.repository.DistanceRepository
 import st.misa.bgpp_native.bgpp.domain.repository.SearchPreferencesRepository
 import st.misa.bgpp_native.bgpp.domain.repository.StationDBRepository
 import st.misa.bgpp_native.bgpp.presentation.arrivals.ArrivalsViewModel
+import st.misa.bgpp_native.bgpp.presentation.map.StationMapRenderer
+import st.misa.bgpp_native.bgpp.presentation.map.StationMapViewModel
+import st.misa.bgpp_native.bgpp.presentation.map.provider.MapLibreStationMapRenderer
+import st.misa.bgpp_native.bgpp.presentation.map.provider.StationMapStyleProvider
+import st.misa.bgpp_native.bgpp.presentation.map.provider.ThunderforestTransportStyleProvider
 import st.misa.bgpp_native.bgpp.presentation.search.SearchViewModel
 import st.misa.bgpp_native.core.data.location.DefaultLocationRepository
 import st.misa.bgpp_native.core.data.resources.AndroidStringProvider
@@ -67,6 +72,9 @@ val appModule = module {
 
     single<DistanceRepository> { OsrmDistanceRepository(get()) }
 
+    single<StationMapStyleProvider> { ThunderforestTransportStyleProvider() }
+    single<StationMapRenderer> { MapLibreStationMapRenderer(styleProvider = get()) }
+
     viewModel {
         SearchViewModel(
             remoteRepository = get(),
@@ -78,10 +86,19 @@ val appModule = module {
         )
     }
 
+    viewModel { (args: StationMapViewModel.Args) ->
+        StationMapViewModel(
+            stationRepository = get(),
+            stringProvider = get(),
+            args = args
+        )
+    }
+
     viewModel { (args: ArrivalsViewModel.Args) ->
         ArrivalsViewModel(
             remoteRepository = get(),
             stationRepository = get(),
+            locationRepository = get(),
             stringProvider = get(),
             args = args
         )

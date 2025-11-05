@@ -26,6 +26,7 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import st.misa.bgpp_native.R
 import st.misa.bgpp_native.bgpp.presentation.models.StationUi
+import st.misa.bgpp_native.core.domain.model.Coords
 import st.misa.bgpp_native.ui.theme.BGPPTheme
 
 @Composable
@@ -143,6 +144,7 @@ fun StationListItemPreview(modifier: Modifier = Modifier) {
             stationUi = StationUi(
                 id = "123445",
                 name = "Narodnog fronta-Šekspirova park",
+                coords = Coords(45.2671, 19.8335),
 //                airDistanceInMeters = 462.0,
                 walkingDistanceInMeters = 512.23,
                 walkingDurationInMinutes = 7

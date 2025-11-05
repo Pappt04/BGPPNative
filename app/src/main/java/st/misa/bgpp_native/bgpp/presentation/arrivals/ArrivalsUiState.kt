@@ -11,6 +11,8 @@ data class ArrivalsUiState(
     val expandedLineIds: Set<String> = emptySet(),
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
+    val stationCoords: Coords? = null,
+    val userLocation: Coords? = null
 )
 
 data class LineArrivalsUi(

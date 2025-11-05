@@ -32,6 +32,7 @@ import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 import st.misa.bgpp_native.R
 import st.misa.bgpp_native.bgpp.domain.model.City
+import st.misa.bgpp_native.bgpp.presentation.arrivals.ArrivalsMapDialog
 import st.misa.bgpp_native.bgpp.presentation.arrivals.ArrivalsViewModel.Args
 import st.misa.bgpp_native.bgpp.presentation.arrivals.ArrivalUi
 import st.misa.bgpp_native.bgpp.presentation.arrivals.LineArrivalsUi
@@ -67,6 +68,7 @@ fun ArrivalsScreen(
         onRefresh = viewModel::refresh,
         onToggleFavorite = viewModel::toggleFavorite,
         onToggleLine = viewModel::toggleLine,
+        onOpenMap = viewModel::onOpenMap,
         modifier = modifier
     )
 }
@@ -79,9 +81,11 @@ fun ArrivalsContent(
     onRefresh: () -> Unit,
     onToggleFavorite: () -> Unit,
     onToggleLine: (String) -> Unit,
+    onOpenMap: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var notificationState by rememberSaveable { mutableStateOf<NotificationDialogState?>(null) }
+    var isMapVisible by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier,
@@ -96,7 +100,10 @@ fun ArrivalsContent(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { /* TODO: Navigate to map */ }) {
+            FloatingActionButton(onClick = {
+                onOpenMap()
+                isMapVisible = true
+            }) {
                 Icon(
                     imageVector = ImageVector.vectorResource(id = R.drawable.ic_map),
                     contentDescription = stringResource(id = R.string.arrivals_map_content_description)
@@ -177,6 +184,17 @@ fun ArrivalsContent(
             onDismiss = { notificationState = null }
         )
     }
+
+    if (isMapVisible && state.stationCoords != null) {
+        ArrivalsMapDialog(
+            stationName = state.stationName,
+            stationId = state.stationId,
+            stationCoords = state.stationCoords,
+            userLocation = state.userLocation,
+            lines = state.lines,
+            onDismiss = { isMapVisible = false }
+        )
+    }
 }
 
 @PreviewLightDark
@@ -213,7 +231,9 @@ private fun ArrivalsPreview() {
             )
         ),
         expandedLineIds = setOf("69"),
-        isLoading = false
+        isLoading = false,
+        stationCoords = Coords(45.246, 19.837),
+        userLocation = Coords(45.24, 19.83)
     )
 
     BGPPTheme {
@@ -224,6 +244,7 @@ private fun ArrivalsPreview() {
                 onRefresh = {},
                 onToggleFavorite = {},
                 onToggleLine = {},
+                onOpenMap = {},
             )
         }
     }

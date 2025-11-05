@@ -10,7 +10,7 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 [versions]
 
 agp = "8.13.0"
-kotlin = "2.2.20"
+kotlin = "2.2.21"
 coreKtx = "1.17.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
@@ -18,16 +18,17 @@ espressoCore = "3.7.0"
 kotlinxSerializationJson = "1.9.0"
 lifecycleRuntimeKtx = "2.9.4"
 activityCompose = "1.11.0"
-composeBom = "2025.10.00"
+composeBom = "2025.10.01"
 ktor = "3.3.1"
 koin = "4.1.1"
-material3-adaptive = "1.1.0"
+material3-adaptive = "1.2.0"
 compose-material-icons-extended = "1.7.8"
 material3Version =  "1.5.0-alpha07"
-room = "2.8.2"
+room = "2.8.3"
 ksp = "2.2.20-2.0.4"
 datastorePreferences = "1.1.7"
 kotlinxCoroutines = "1.10.2"
+maplibre = "12.0.1"
 
 
 
@@ -53,6 +54,7 @@ androidx-material3 = { group = "androidx.compose.material3", name = "material3" 
 koin-android = { group = "io.insert-koin", name = "koin-android", version.ref = "koin" }
 koin-core = { group = "io.insert-koin", name = "koin-core", version.ref = "koin" }
 koin-androidx-compose = { group = "io.insert-koin", name = "koin-androidx-compose", version.ref = "koin" }
+koin-compose = { group = "io.insert-koin", name = "koin-compose", version.ref = "koin" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
@@ -68,6 +70,7 @@ androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref =
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
 material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3Version" }
+maplibreAndroid = { module = "org.maplibre.gl:android-sdk", version.ref = "maplibre" }
 
 
 [bundles]
@@ -82,7 +85,8 @@ compose = [
 koin = [
     "koin-core",
     "koin-android",
-    "koin-androidx-compose"
+    "koin-androidx-compose",
+    "koin-compose"
 ]
 ktor = [
     "ktor-client-cio",

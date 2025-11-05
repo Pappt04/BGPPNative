@@ -13,6 +13,7 @@ import androidx.compose.ui.tooling.preview.PreviewDynamicColors
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import st.misa.bgpp_native.bgpp.presentation.models.StationUi
+import st.misa.bgpp_native.core.domain.model.Coords
 import st.misa.bgpp_native.ui.theme.BGPPTheme
 
 @Composable
@@ -43,9 +44,9 @@ fun StationList(
 
 
 internal val sampleStations = listOf(
-    StationUi("1", "Žarka Zrenjanina-Izvršno veće", 120.0, 123.0, 3),
-    StationUi("123", "Svetozara Miletića", 450.0, 511.2, 8),
-    StationUi("0401B", "Trg Slobode", 800.0, 823.4, 12),
+    StationUi("1", "Žarka Zrenjanina-Izvršno veće", Coords(45.26, 19.83), 120.0, 123.0, 3),
+    StationUi("123", "Svetozara Miletića", Coords(45.25, 19.84), 450.0, 511.2, 8),
+    StationUi("0401B", "Trg Slobode", Coords(45.27, 19.85), 800.0, 823.4, 12),
 )
 
 @PreviewLightDark

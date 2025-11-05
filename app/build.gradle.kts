@@ -15,6 +15,7 @@ if (localPropertiesFile.exists()) {
     localProperties.load(FileInputStream(localPropertiesFile))
 }
 
+android.buildFeatures.buildConfig = true
 
 
 android {
@@ -29,6 +30,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        val thunderforestKey = localProperties.getProperty("thunderforest.apiKey") ?: ""
+        buildConfigField("String", "THUNDERFOREST_API_KEY", "\"$thunderforestKey\"")
     }
 
     buildTypes {
@@ -85,6 +89,9 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     implementation(libs.androidx.datastore.preferences)
+
+    implementation(libs.maplibreAndroid)
+    implementation("org.maplibre.gl:android-plugin-annotation-v9:3.0.2")
 
 
     testImplementation(libs.junit)

@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
 import st.misa.bgpp_native.bgpp.domain.model.City
+import st.misa.bgpp_native.bgpp.presentation.map.StationMapDialog
 import st.misa.bgpp_native.bgpp.presentation.models.StationUi
 
 @Composable
@@ -60,6 +61,24 @@ fun SearchScreen(
                 onStationSelected(station, city)
             }
         },
+        onOpenStationExplorer = viewModel::onOpenStationExplorer,
         modifier = modifier
     )
+
+    val city = state.selectedCity
+    if (state.isStationMapVisible && city != null) {
+        val origin = state.mapOrigin ?: city.center
+        StationMapDialog(
+            city = city,
+            seedStations = state.stationMapSeed.ifEmpty { state.stations },
+            usingCityCenterFallback = state.usingCityCenter,
+            origin = origin,
+            userLocation = state.userLocation,
+            onDismiss = viewModel::onCloseStationExplorer,
+            onStationSelected = { station ->
+                onStationSelected(station, city)
+                viewModel.onCloseStationExplorer()
+            }
+        )
+    }
 }

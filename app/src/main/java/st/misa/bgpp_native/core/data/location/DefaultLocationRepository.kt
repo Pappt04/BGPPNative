@@ -7,14 +7,11 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
-import android.os.Build
 import android.os.Looper
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import st.misa.bgpp_native.core.domain.location.LocationError
 import st.misa.bgpp_native.core.domain.location.LocationRepository
@@ -38,8 +35,8 @@ class DefaultLocationRepository(
         }
 
         return try {
-            val location = withContext(Dispatchers.Default) { findBestRecentLocation() }
-                ?: requestSingleUpdate()
+            // Always request a new fix so callers do not receive a cached location.
+            val location = requestSingleUpdate()
             Result.Success(Coords(location.latitude, location.longitude))
         } catch (e: LocationUnavailableException) {
             Result.Error(e.error)
@@ -65,24 +62,6 @@ class DefaultLocationRepository(
     private fun isLocationEnabled(locationManager: LocationManager): Boolean {
         return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
             locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun findBestRecentLocation(): Location? {
-        val providers = buildList {
-            add(LocationManager.GPS_PROVIDER)
-            add(LocationManager.NETWORK_PROVIDER)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                add(LocationManager.FUSED_PROVIDER)
-            }
-            add(LocationManager.PASSIVE_PROVIDER)
-        }
-        return providers
-            .filter { locationManager.isProviderEnabled(it) }
-            .mapNotNull { provider ->
-                runCatching { locationManager.getLastKnownLocation(provider) }.getOrNull()
-            }
-            .maxByOrNull { it.time }
     }
 
     @SuppressLint("MissingPermission")

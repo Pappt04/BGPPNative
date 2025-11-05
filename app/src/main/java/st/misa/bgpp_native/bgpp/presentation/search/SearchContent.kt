@@ -39,6 +39,7 @@ fun SearchContent(
     onApplyPreferences: (SearchPreferences) -> Unit,
     onRefresh: () -> Unit,
     onStationSelected: (StationUi) -> Unit,
+    onOpenStationExplorer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val pullRefreshState = rememberPullRefreshState(
@@ -55,7 +56,7 @@ fun SearchContent(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { /* TODO: Map navigation */ }) {
+            FloatingActionButton(onClick = onOpenStationExplorer) {
                 Icon(
                     imageVector = ImageVector.vectorResource(id = R.drawable.ic_map),
                     contentDescription = stringResource(id = R.string.search_map_content_description)

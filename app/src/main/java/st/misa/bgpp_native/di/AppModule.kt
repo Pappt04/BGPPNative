@@ -3,7 +3,7 @@ package st.misa.bgpp_native.di
 import android.content.Context
 import android.location.LocationManager
 import androidx.room.Room
-import io.ktor.client.engine.cio.CIO
+import io.ktor.client.engine.okhttp.OkHttp
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
@@ -12,10 +12,20 @@ import st.misa.bgpp_native.bgpp.data.local.StationDBRepositoryImpl
 import st.misa.bgpp_native.bgpp.data.networking.OsrmDistanceRepository
 import st.misa.bgpp_native.bgpp.data.networking.RemoteBGPPDataRepositoryImpl
 import st.misa.bgpp_native.bgpp.data.preferences.DataStoreSearchPreferencesRepository
+import st.misa.bgpp_native.bgpp.data.notifications.AndroidArrivalNotificationPublisher
+import st.misa.bgpp_native.bgpp.data.notifications.DefaultArrivalNotificationManager
+import st.misa.bgpp_native.bgpp.data.notifications.InMemoryArrivalNotificationRegistry
 import st.misa.bgpp_native.bgpp.domain.repository.BGPPDataRepository
 import st.misa.bgpp_native.bgpp.domain.repository.DistanceRepository
 import st.misa.bgpp_native.bgpp.domain.repository.SearchPreferencesRepository
 import st.misa.bgpp_native.bgpp.domain.repository.StationDBRepository
+import st.misa.bgpp_native.bgpp.domain.notifications.ArrivalNotificationManager
+import st.misa.bgpp_native.bgpp.domain.notifications.ArrivalNotificationPublisher
+import st.misa.bgpp_native.bgpp.domain.notifications.ArrivalNotificationRegistry
+import st.misa.bgpp_native.bgpp.domain.notifications.ArrivalNotifierFactory
+import st.misa.bgpp_native.bgpp.domain.notifications.MinutesArrivalNotifierService
+import st.misa.bgpp_native.bgpp.domain.notifications.StationsArrivalNotifierService
+import st.misa.bgpp_native.bgpp.notifications.ArrivalMonitorController
 import st.misa.bgpp_native.bgpp.presentation.arrivals.ArrivalsViewModel
 import st.misa.bgpp_native.bgpp.presentation.map.StationMapRenderer
 import st.misa.bgpp_native.bgpp.presentation.map.StationMapViewModel
@@ -31,7 +41,7 @@ import st.misa.bgpp_native.core.domain.util.StringProvider
 
 val appModule = module {
     single {
-        HttpClientFactory.create(CIO.create())
+        HttpClientFactory.create(OkHttp.create())
     }
 
     single {
@@ -55,6 +65,31 @@ val appModule = module {
     single<BGPPDataRepository> { RemoteBGPPDataRepositoryImpl(get()) }
 
     single<SearchPreferencesRepository> { DataStoreSearchPreferencesRepository(androidContext()) }
+
+    single<ArrivalNotificationPublisher> { AndroidArrivalNotificationPublisher(androidContext()) }
+
+    single<ArrivalNotificationRegistry> { InMemoryArrivalNotificationRegistry() }
+
+    single { MinutesArrivalNotifierService(get(), get()) }
+
+    single { StationsArrivalNotifierService(get(), get()) }
+
+    single { ArrivalNotifierFactory(get(), get()) }
+
+    single {
+        ArrivalMonitorController(
+            context = androidContext(),
+            registry = get()
+        )
+    }
+
+    single<ArrivalNotificationManager> {
+        DefaultArrivalNotificationManager(
+            registry = get(),
+            notificationPublisher = get(),
+            monitorController = get()
+        )
+    }
 
     single<LocationManager> {
         val manager = androidContext().getSystemService(Context.LOCATION_SERVICE) as? LocationManager
@@ -100,6 +135,7 @@ val appModule = module {
             stationRepository = get(),
             locationRepository = get(),
             stringProvider = get(),
+            notificationManager = get(),
             args = args
         )
     }

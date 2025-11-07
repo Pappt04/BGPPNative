@@ -1,5 +1,6 @@
 package st.misa.bgpp_native
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -8,6 +9,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
@@ -20,22 +22,36 @@ import st.misa.bgpp_native.bgpp.presentation.arrivals.ArrivalsScreen
 import st.misa.bgpp_native.bgpp.presentation.models.StationUi
 import st.misa.bgpp_native.bgpp.presentation.search.SearchScreen
 import st.misa.bgpp_native.core.domain.model.Coords
+import st.misa.bgpp_native.bgpp.notifications.ArrivalNotificationExtras
 import st.misa.bgpp_native.ui.theme.BGPPTheme
+import androidx.compose.runtime.mutableStateOf as composeMutableStateOf
 
 class MainActivity : ComponentActivity() {
+
+    private val pendingNotificationSelection = composeMutableStateOf<StationSelection?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        pendingNotificationSelection.value = intent.toNotificationSelection()
         setContent {
             BGPPTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
+                    val pendingSelection by pendingNotificationSelection
                     var selection by rememberSaveable(
                         saver = StationSelectionStateSaver
                     ) {
-                        mutableStateOf<StationSelection?>(null)
+                        mutableStateOf(pendingSelection)
+                    }
+
+                    LaunchedEffect(pendingSelection) {
+                        if (pendingSelection != null) {
+                            selection = pendingSelection
+                            pendingNotificationSelection.value = null
+                        }
                     }
 
                     Crossfade(
@@ -61,9 +77,15 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        pendingNotificationSelection.value = intent.toNotificationSelection()
+    }
 }
 
-private data class StationSelection(
+data class StationSelection(
     val stationId: String,
     val stationName: String,
     val cityId: String,
@@ -112,6 +134,26 @@ private fun Any?.toStationSelection(): StationSelection? {
     val cityName = map["cityName"] as? String ?: return null
     val cityLat = (map["cityLat"] as? Number)?.toDouble() ?: return null
     val cityLon = (map["cityLon"] as? Number)?.toDouble() ?: return null
+    return StationSelection(
+        stationId = stationId,
+        stationName = stationName,
+        cityId = cityId,
+        cityName = cityName,
+        cityLat = cityLat,
+        cityLon = cityLon
+    )
+}
+
+private fun Intent?.toNotificationSelection(): StationSelection? {
+    this ?: return null
+    val cityId = getStringExtra(ArrivalNotificationExtras.EXTRA_CITY_ID) ?: return null
+    val cityName = getStringExtra(ArrivalNotificationExtras.EXTRA_CITY_NAME) ?: return null
+    val stationId = getStringExtra(ArrivalNotificationExtras.EXTRA_STATION_ID) ?: return null
+    val stationName = getStringExtra(ArrivalNotificationExtras.EXTRA_STATION_NAME) ?: return null
+    val cityLat = getDoubleExtra(ArrivalNotificationExtras.EXTRA_CITY_LAT, Double.NaN)
+    val cityLon = getDoubleExtra(ArrivalNotificationExtras.EXTRA_CITY_LON, Double.NaN)
+    if (cityLat.isNaN() || cityLon.isNaN()) return null
+
     return StationSelection(
         stationId = stationId,
         stationName = stationName,

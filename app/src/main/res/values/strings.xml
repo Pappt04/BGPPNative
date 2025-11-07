@@ -68,6 +68,16 @@
     <string name="arrivals_notification_stations">Stations</string>
     <string name="arrivals_notification_minutes_label">Minutes away</string>
     <string name="arrivals_notification_stations_label">Stations away</string>
+    <string name="arrival_notification_channel_name">Arrival alerts</string>
+    <string name="arrival_notification_channel_description">Alerts when tracked buses are close to your station.</string>
+    <string name="arrival_notification_title">Line %1$s is approaching</string>
+    <string name="arrival_notification_minutes_message">Line %1$s reaches %3$s in %2$d minutes.</string>
+    <string name="arrival_notification_stations_message">Line %1$s is %2$d stations away from %3$s.</string>
+    <string name="arrival_notification_saved">Arrival alert saved.</string>
+    <string name="arrival_location_error">Couldn’t get your location. Check GPS and try again.</string>
+    <string name="arrival_monitor_channel_name">Arrival monitoring</string>
+    <string name="arrival_monitor_title">Monitoring arrivals</string>
+    <string name="arrival_monitor_body">Keeping your arrival alerts up to date.</string>
 
     <!-- Station map dialog -->
     <string name="station_map_title">Stations</string>

@@ -1,3 +1,4 @@
+import com.android.build.api.dsl.Packaging
 import java.io.FileInputStream
 import java.util.Properties
 
@@ -43,6 +44,31 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+
+            packaging {
+                jniLibs {
+                    useLegacyPackaging = false
+                }
+                resources {
+                    excludes += listOf(
+                        "META-INF/*.kotlin_module",
+                        "**/*.txt",
+                        "**/*.md",
+                        "**/*.so.debug",
+                        "**/*.sym",
+                        "**/*.json",
+                        // native stuff
+                        "META-INF/native/**",
+                        "org/sqlite/native/**",
+                        "org/sqlite/native/Windows/**",
+                        "org/sqlite/native/Mac/**",
+                        "org/sqlite/native/Linux/**",
+                        "**/*.dll",
+                        "**/*.dylib",
+                        "**/*.jnilib"
+                    )
+                }
+            }
         }
     }
     compileOptions {
@@ -54,6 +80,23 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+
+    // Ensure unwanted ABIs aren't included
+    fun Packaging.() {
+        jniLibs {
+            excludes += listOf("**/x86/**", "**/x86_64/**")
+        }
+    }
+
+    // Optional per-ABI APKs (good if you’re not using AAB)
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+            isUniversalApk = false
+        }
     }
 }
 

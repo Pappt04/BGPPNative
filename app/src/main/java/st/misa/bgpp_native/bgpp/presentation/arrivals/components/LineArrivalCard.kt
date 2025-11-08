@@ -105,10 +105,14 @@ fun LineArrivalCard(
 
             AnimatedVisibility(
                 visible = expanded,
-                enter = fadeIn() + expandVertically(
+                enter = fadeIn(
+                    animationSpec = MaterialTheme.motionScheme.fastEffectsSpec()
+                ) + expandVertically(
                     animationSpec = MaterialTheme.motionScheme.fastSpatialSpec()
                 ),
-                exit = fadeOut() + shrinkVertically(
+                exit = fadeOut(
+                    animationSpec = MaterialTheme.motionScheme.fastEffectsSpec()
+                ) + shrinkVertically(
                     animationSpec = MaterialTheme.motionScheme.fastSpatialSpec()
 
                 ),

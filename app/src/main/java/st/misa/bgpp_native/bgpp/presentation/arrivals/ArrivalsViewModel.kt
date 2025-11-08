@@ -20,6 +20,7 @@ import st.misa.bgpp_native.bgpp.domain.repository.StationDBRepository
 import st.misa.bgpp_native.bgpp.domain.notifications.ArrivalNotificationManager
 import st.misa.bgpp_native.bgpp.domain.notifications.ArrivalNotificationSpec
 import st.misa.bgpp_native.core.domain.location.LocationRepository
+import st.misa.bgpp_native.core.domain.model.Coords
 import st.misa.bgpp_native.core.domain.util.NetworkError
 import st.misa.bgpp_native.core.domain.util.Result
 import st.misa.bgpp_native.core.domain.util.StringProvider
@@ -159,16 +160,16 @@ class ArrivalsViewModel(
         }
     }
 
-    suspend fun refreshUserLocation(): Boolean {
+    suspend fun refreshUserLocation(): Coords? {
         val locationResult = withContext(ioDispatcher) {
             locationRepository.getCurrentLocation()
         }
         return when (locationResult) {
             is Result.Success -> {
                 _state.update { it.copy(userLocation = locationResult.data) }
-                true
+                locationResult.data
             }
-            is Result.Error -> false
+            is Result.Error -> null
         }
     }
 

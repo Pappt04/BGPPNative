@@ -89,8 +89,22 @@ class StationMapViewModel(
             if (current.highlightedStationId == stationId) {
                 current
             } else {
-                current.copy(highlightedStationId = stationId)
+                val selectedStation = current.stations.firstOrNull { it.id == stationId }
+                    ?: current.stickySelectedStation
+                current.copy(
+                    highlightedStationId = stationId,
+                    stickySelectedStation = selectedStation
+                )
             }
+        }
+    }
+
+    fun clearSelection() {
+        _state.update {
+            it.copy(
+                highlightedStationId = null,
+                stickySelectedStation = null
+            )
         }
     }
 
@@ -118,15 +132,27 @@ class StationMapViewModel(
         }
 
         _state.update { current ->
-            val markers = stations.toMarkers()
-            val retainedSelection = current.highlightedStationId?.takeIf { selectedId ->
-                markers.any { it.id == selectedId }
+            val markers = stations.toMarkers().toMutableList()
+            val retainedSelection = current.highlightedStationId
+            val updatedSticky = current.stickySelectedStation?.let { sticky ->
+                stations.firstOrNull { it.id == sticky.id } ?: sticky
+            } ?: current.highlightedStationId?.let { id ->
+                stations.firstOrNull { it.id == id } ?: current.stickySelectedStation
             }
+
+            updatedSticky?.let { sticky ->
+                if (markers.none { it.id == sticky.id }) {
+                    markers += sticky.toMarker()
+                }
+            }
+
+            val highlightId = updatedSticky?.id ?: retainedSelection
 
             current.copy(
                 stations = stations,
                 markers = markers,
-                highlightedStationId = retainedSelection,
+                highlightedStationId = highlightId,
+                stickySelectedStation = updatedSticky,
                 isLoading = false,
                 statusMessage = message
             )
@@ -158,7 +184,7 @@ class StationMapViewModel(
     }
 
     companion object {
-        private const val VIEWPORT_DEBOUNCE_MS = 650L
+        private const val VIEWPORT_DEBOUNCE_MS = 150L
         private const val MAX_STATION_RESULTS = 100
     }
 }

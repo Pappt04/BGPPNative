@@ -120,6 +120,8 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.compose.material.icons.extended)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.compose.destinations.core)
+    implementation(libs.compose.destinations.animations)
 
 
 
@@ -130,6 +132,7 @@ dependencies {
     implementation(libs.bundles.room)
     implementation(libs.material3)
     ksp(libs.androidx.room.compiler)
+    ksp(libs.compose.destinations.ksp)
 
     implementation(libs.androidx.datastore.preferences)
 

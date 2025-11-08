@@ -5,14 +5,16 @@ import st.misa.bgpp_native.core.domain.model.BoundingBox
 import st.misa.bgpp_native.core.domain.model.Coords
 
 internal fun List<StationUi>.toMarkers(): List<StationMapMarker> = map { station ->
-    StationMapMarker(
-        id = station.id,
-        name = station.name,
-        coords = station.coords,
-        badge = station.id.take(4).uppercase(),
-        isFavorite = station.favorite
-    )
+    station.toMarker()
 }
+
+internal fun StationUi.toMarker(): StationMapMarker = StationMapMarker(
+    id = id,
+    name = name,
+    coords = coords,
+    badge = id.take(4).uppercase(),
+    isFavorite = favorite
+)
 
 internal fun List<StationUi>.boundingBoxOrNull(): BoundingBox? {
     if (isEmpty()) return null

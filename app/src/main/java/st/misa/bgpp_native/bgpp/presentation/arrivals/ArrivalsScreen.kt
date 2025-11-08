@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.widget.Toast
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,7 +25,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,12 +41,14 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ramcosta.composedestinations.annotation.Destination
+import com.ramcosta.composedestinations.annotation.RootNavGraph
+import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import st.misa.bgpp_native.bgpp.presentation.destinations.ArrivalsMapScreenDestination
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 import st.misa.bgpp_native.R
-import st.misa.bgpp_native.bgpp.domain.model.City
-import st.misa.bgpp_native.bgpp.presentation.arrivals.ArrivalsMapDialog
 import st.misa.bgpp_native.bgpp.presentation.arrivals.ArrivalsViewModel.Args
 import st.misa.bgpp_native.bgpp.presentation.arrivals.ArrivalUi
 import st.misa.bgpp_native.bgpp.presentation.arrivals.LineArrivalsUi
@@ -57,6 +59,8 @@ import st.misa.bgpp_native.bgpp.presentation.arrivals.components.NotificationDia
 import st.misa.bgpp_native.bgpp.presentation.arrivals.components.NotificationDialogState
 import st.misa.bgpp_native.bgpp.presentation.arrivals.components.NotificationMode
 import st.misa.bgpp_native.bgpp.presentation.arrivals.components.StationOverviewCard
+import st.misa.bgpp_native.bgpp.presentation.navigation.ArrivalsMapNavArgs
+import st.misa.bgpp_native.bgpp.presentation.navigation.StationSelection
 import st.misa.bgpp_native.core.domain.model.Coords
 import st.misa.bgpp_native.ui.theme.BGPPTheme
 
@@ -68,27 +72,29 @@ private data class PendingNotification(
     val threshold: Int
 )
 
+@RootNavGraph
+@Destination(route = "arrivals")
 @Composable
 fun ArrivalsScreen(
-    city: City,
-    stationId: String,
-    stationName: String,
-    onBack: () -> Unit,
-    modifier: Modifier = Modifier,
-    viewModel: ArrivalsViewModel = koinViewModel(
-        key = "arrivals_${city.id}_${stationId}",
+    selection: StationSelection,
+    navigator: DestinationsNavigator,
+    modifier: Modifier = Modifier
+) {
+    val city = remember(selection) { selection.toCity() }
+    val context = LocalContext.current
+    val activity = remember(context) { context as ComponentActivity }
+    val viewModel: ArrivalsViewModel = koinViewModel(
+        key = "arrivals_${city.id}_${selection.stationId}",
+        viewModelStoreOwner = activity,
         parameters = {
-            parametersOf(Args(city = city, stationId = stationId, stationName = stationName))
+            parametersOf(Args(city = city, stationId = selection.stationId, stationName = selection.stationName))
         }
     )
-) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val pendingNotification = remember { mutableStateOf<PendingNotification?>(null) }
-    var isMapVisible by rememberSaveable { mutableStateOf(false) }
     var isWaitingForLocation by rememberSaveable { mutableStateOf(false) }
-    var shouldOpenMapAfterPermission by rememberSaveable { mutableStateOf(false) }
+    var shouldRefreshLocationAfterPermission by rememberSaveable { mutableStateOf(false) }
     val showSavedToast = {
         Toast.makeText(
             context,
@@ -102,6 +108,10 @@ fun ArrivalsScreen(
             context.getString(R.string.arrival_location_error),
             Toast.LENGTH_SHORT
         ).show()
+    }
+
+    val openMapScreen: () -> Unit = {
+        navigator.navigate(ArrivalsMapScreenDestination(args = ArrivalsMapNavArgs(selection = selection)))
     }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -121,25 +131,33 @@ fun ArrivalsScreen(
         pendingNotification.value = null
     }
 
+    val requestLocationRefresh: () -> Unit = refresh@{
+        if (isWaitingForLocation) return@refresh
+        isWaitingForLocation = true
+        coroutineScope.launch {
+            try {
+                val latestLocation = viewModel.refreshUserLocation()
+                if (latestLocation == null) {
+                    showLocationError()
+                }
+            } finally {
+                isWaitingForLocation = false
+            }
+        }
+    }
+
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val granted = permissions.values.any { it }
-        if (granted && shouldOpenMapAfterPermission) {
-            isWaitingForLocation = true
-            coroutineScope.launch {
-                val success = viewModel.refreshUserLocation()
-                if (success) {
-                    isMapVisible = true
-                } else {
-                    showLocationError()
-                }
-                isWaitingForLocation = false
+        if (shouldRefreshLocationAfterPermission) {
+            if (granted) {
+                requestLocationRefresh()
+            } else {
+                showLocationError()
             }
-        } else if (!granted && shouldOpenMapAfterPermission) {
-            showLocationError()
+            shouldRefreshLocationAfterPermission = false
         }
-        shouldOpenMapAfterPermission = false
     }
 
     val handleNotificationRequest: (String, String, ArrivalUi, NotificationMode, Int) -> Unit = { lineNumber, lineName, arrival, mode, threshold ->
@@ -158,22 +176,12 @@ fun ArrivalsScreen(
         }
     }
 
-    val handleMapClick: () -> Unit = {
-        if (isWaitingForLocation) {
-            // Already requesting a fix; ignore taps.
-        } else if (viewModel.hasLocationPermission()) {
-            isWaitingForLocation = true
-            coroutineScope.launch {
-                val success = viewModel.refreshUserLocation()
-                if (success) {
-                    isMapVisible = true
-                } else {
-                    showLocationError()
-                }
-                isWaitingForLocation = false
-            }
+    val handleMapClick: () -> Unit = handleMapClick@{
+        openMapScreen()
+        if (viewModel.hasLocationPermission()) {
+            requestLocationRefresh()
         } else {
-            shouldOpenMapAfterPermission = true
+            shouldRefreshLocationAfterPermission = true
             locationPermissionLauncher.launch(
                 arrayOf(
                     Manifest.permission.ACCESS_FINE_LOCATION,
@@ -183,24 +191,20 @@ fun ArrivalsScreen(
         }
     }
 
-    LaunchedEffect(isMapVisible, state.lines, isWaitingForLocation) {
-        if (isMapVisible && !isWaitingForLocation && viewModel.hasLocationPermission()) {
-            viewModel.refreshUserLocation()
-        }
+    val handleBack: () -> Unit = {
+        navigator.popBackStack()
+        Unit
     }
-
-    BackHandler(onBack = onBack)
+    BackHandler(onBack = handleBack)
 
     ArrivalsContent(
         state = state,
-        onBack = onBack,
+        onBack = handleBack,
         onRefresh = viewModel::refresh,
         onToggleFavorite = viewModel::toggleFavorite,
         onToggleLine = viewModel::toggleLine,
         onMapClick = handleMapClick,
-        isMapVisible = isMapVisible,
         isWaitingForLocation = isWaitingForLocation,
-        onDismissMap = { isMapVisible = false },
         onRegisterNotification = handleNotificationRequest,
         modifier = modifier
     )
@@ -215,9 +219,7 @@ fun ArrivalsContent(
     onToggleFavorite: () -> Unit,
     onToggleLine: (String) -> Unit,
     onMapClick: () -> Unit,
-    isMapVisible: Boolean,
     isWaitingForLocation: Boolean,
-    onDismissMap: () -> Unit,
     onRegisterNotification: (lineNumber: String, lineName: String, arrival: ArrivalUi, mode: NotificationMode, threshold: Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -338,17 +340,6 @@ fun ArrivalsContent(
             }
         )
     }
-
-    if (isMapVisible && state.stationCoords != null) {
-        ArrivalsMapDialog(
-            stationName = state.stationName,
-            stationId = state.stationId,
-            stationCoords = state.stationCoords,
-            userLocation = state.userLocation,
-            lines = state.lines,
-            onDismiss = onDismissMap
-        )
-    }
 }
 
 @PreviewLightDark
@@ -399,9 +390,7 @@ private fun ArrivalsPreview() {
                 onToggleFavorite = {},
                 onToggleLine = {},
                 onMapClick = {},
-                isMapVisible = false,
                 isWaitingForLocation = false,
-                onDismissMap = {},
                 onRegisterNotification = { _, _, _, _, _ -> },
             )
         }

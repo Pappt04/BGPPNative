@@ -50,7 +50,8 @@ class MapLibreStationMapRenderer(
         state: StationMapRenderState,
         modifier: Modifier,
         onViewportChanged: (BoundingBox) -> Unit,
-        onMarkerClick: (String) -> Unit
+        onMarkerClick: (String) -> Unit,
+        onMapTap: () -> Unit
     ) {
         val context = LocalContext.current
         val lifecycleOwner = LocalLifecycleOwner.current
@@ -86,6 +87,9 @@ class MapLibreStationMapRenderer(
         DisposableEffect(mapView) {
             val callback = OnMapReadyCallback { readyMap ->
                 mapLibreMap = readyMap
+                readyMap.uiSettings.apply {
+                    isRotateGesturesEnabled = false
+                }
                 val styleJson = styleProvider.resolveStyle(context)
                 val defaultStyle = "https://demotiles.maplibre.org/style.json"
                 val styleBuilder = styleJson
@@ -121,10 +125,16 @@ class MapLibreStationMapRenderer(
                     true
                 }
             }
+            val mapClickListener = MapLibreMap.OnMapClickListener {
+                onMapTap()
+                true
+            }
+            map.addOnMapClickListener(mapClickListener)
 
             onDispose {
                 map.removeOnCameraIdleListener(listener)
                 map.setOnMarkerClickListener(null)
+                map.removeOnMapClickListener(mapClickListener)
             }
         }
 
@@ -132,19 +142,25 @@ class MapLibreStationMapRenderer(
         val highlightIconSize = markerSizeForZoom(currentZoom, 52f)
         val userIconSize = markerSizeForZoom(currentZoom, 40f)
         val arrivalIconSize = markerSizeForZoom(currentZoom, 36f)
+        val highlightedArrivalIconSize = markerSizeForZoom(currentZoom, 44f)
+
+        val defaultStationColor = MaterialTheme.colorScheme.secondary
+        val defaultStationOnColor = MaterialTheme.colorScheme.onSecondary
+        val highlightedStationColor = MaterialTheme.colorScheme.primary
+        val highlightedStationOnColor = MaterialTheme.colorScheme.onPrimary
 
         val defaultIcon = rememberFilledVectorIcon(
             context = context,
             drawableRes = R.drawable.ic_station,
-            backgroundColor = MaterialTheme.colorScheme.primary,
-            iconTint = MaterialTheme.colorScheme.onPrimary,
+            backgroundColor = defaultStationColor,
+            iconTint = defaultStationOnColor,
             sizeDp = stationIconSize
         )
         val highlightedIcon = rememberFilledVectorIcon(
             context = context,
             drawableRes = R.drawable.ic_station,
-            backgroundColor = MaterialTheme.colorScheme.tertiary,
-            iconTint = MaterialTheme.colorScheme.onTertiary,
+            backgroundColor = highlightedStationColor,
+            iconTint = highlightedStationOnColor,
             sizeDp = highlightIconSize
         )
         val userIcon = rememberFilledVectorIcon(
@@ -154,13 +170,30 @@ class MapLibreStationMapRenderer(
             iconTint = Color.White,
             sizeDp = userIconSize
         )
-        val arrivalIcons = remember(state.arrivalMarkers, currentZoom, context) {
+        val defaultStationColorArgb = defaultStationColor.toArgb()
+        val defaultStationOnColorArgb = defaultStationOnColor.toArgb()
+        val highlightedStationColorArgb = highlightedStationColor.toArgb()
+        val highlightedStationOnColorArgb = highlightedStationOnColor.toArgb()
+
+        val arrivalIcons = remember(state.arrivalMarkers, currentZoom, context, defaultStationColorArgb, defaultStationOnColorArgb) {
             state.arrivalMarkers.associate { marker ->
                 marker.id to createArrivalIcon(
                     context = context,
                     label = marker.label,
-                    fillColor = marker.tintArgb,
-                    sizeDp = arrivalIconSize
+                    fillColor = defaultStationColorArgb,
+                    sizeDp = arrivalIconSize,
+                    textColor = defaultStationOnColorArgb
+                )
+            }
+        }
+        val highlightedArrivalIcons = remember(state.arrivalMarkers, currentZoom, context, highlightedStationColorArgb, highlightedStationOnColorArgb) {
+            state.arrivalMarkers.associate { marker ->
+                marker.id to createArrivalIcon(
+                    context = context,
+                    label = marker.label,
+                    fillColor = highlightedStationColorArgb,
+                    sizeDp = highlightedArrivalIconSize,
+                    textColor = highlightedStationOnColorArgb
                 )
             }
         }
@@ -171,6 +204,7 @@ class MapLibreStationMapRenderer(
             state.markers,
             state.arrivalMarkers,
             state.highlightedMarkerId,
+            state.highlightedArrivalMarkerId,
             currentZoom
         ) {
             val map = mapLibreMap ?: return@LaunchedEffect
@@ -187,7 +221,25 @@ class MapLibreStationMapRenderer(
             }
 
             state.arrivalMarkers.forEach { marker ->
-                val icon = arrivalIcons[marker.id] ?: createArrivalIcon(context, marker.label, marker.tintArgb)
+                val icon = if (marker.id == state.highlightedArrivalMarkerId) {
+                    highlightedArrivalIcons[marker.id] ?: createArrivalIcon(
+                        context = context,
+                        label = marker.label,
+                        fillColor = highlightedStationColorArgb,
+                        sizeDp = highlightedArrivalIconSize,
+                        textColor = highlightedStationOnColorArgb,
+                        strokeColor = Color.White.toArgb(),
+                        strokeWidthDp = 3f
+                    )
+                } else {
+                    arrivalIcons[marker.id] ?: createArrivalIcon(
+                        context = context,
+                        label = marker.label,
+                        fillColor = defaultStationColorArgb,
+                        sizeDp = arrivalIconSize,
+                        textColor = defaultStationOnColorArgb
+                    )
+                }
                 val options = MarkerOptions()
                     .position(LatLng(marker.coords.lat, marker.coords.lon))
                     .snippet(marker.id)
@@ -279,7 +331,10 @@ class MapLibreStationMapRenderer(
         context: android.content.Context,
         label: String,
         fillColor: Int,
-        sizeDp: Float = 44f
+        sizeDp: Float = 44f,
+        textColor: Int = Color.White.toArgb(),
+        strokeColor: Int? = null,
+        strokeWidthDp: Float = 0f
     ): Icon {
         val density = context.resources.displayMetrics.density
         val sizePx = (sizeDp * density).roundToInt().coerceAtLeast(12)
@@ -293,8 +348,22 @@ class MapLibreStationMapRenderer(
         }
         canvas.drawCircle(radius, radius, radius, circlePaint)
 
+        if (strokeColor != null && strokeWidthDp > 0f) {
+            val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = strokeColor
+                style = Paint.Style.STROKE
+                strokeWidth = strokeWidthDp * density
+            }
+            canvas.drawCircle(
+                radius,
+                radius,
+                radius - (strokePaint.strokeWidth / 2f),
+                strokePaint
+            )
+        }
+
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.White.toArgb()
+            color = textColor
             textAlign = Paint.Align.CENTER
             textSize = sizePx * 0.5f
             typeface = Typeface.DEFAULT_BOLD

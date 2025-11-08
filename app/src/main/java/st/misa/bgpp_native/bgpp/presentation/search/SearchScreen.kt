@@ -7,16 +7,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import com.ramcosta.composedestinations.annotation.Destination
+import com.ramcosta.composedestinations.annotation.RootNavGraph
+import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
-import st.misa.bgpp_native.bgpp.domain.model.City
-import st.misa.bgpp_native.bgpp.presentation.map.StationMapDialog
-import st.misa.bgpp_native.bgpp.presentation.models.StationUi
+import st.misa.bgpp_native.bgpp.presentation.destinations.ArrivalsScreenDestination
+import st.misa.bgpp_native.bgpp.presentation.destinations.SearchMapScreenDestination
+import st.misa.bgpp_native.bgpp.presentation.navigation.StationSelection
+import st.misa.bgpp_native.bgpp.presentation.navigation.toSearchMapNavArgs
 
+@RootNavGraph(start = true)
+@Destination(route = "search")
 @Composable
 fun SearchScreen(
+    navigator: DestinationsNavigator,
     modifier: Modifier = Modifier,
-    onStationSelected: (StationUi, City) -> Unit = { _, _ -> },
     viewModel: SearchViewModel = koinViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -58,27 +64,21 @@ fun SearchScreen(
         onRefresh = viewModel::refresh,
         onStationSelected = { station ->
             state.selectedCity?.let { city ->
-                onStationSelected(station, city)
+                val selection = StationSelection.from(city, station)
+                navigator.navigate(ArrivalsScreenDestination(selection = selection))
             }
         },
         onOpenStationExplorer = viewModel::onOpenStationExplorer,
         modifier = modifier
     )
 
-    val city = state.selectedCity
-    if (state.isStationMapVisible && city != null) {
-        val origin = state.mapOrigin ?: city.center
-        StationMapDialog(
-            city = city,
-            seedStations = state.stationMapSeed.ifEmpty { state.stations },
-            usingCityCenterFallback = state.usingCityCenter,
-            origin = origin,
-            userLocation = state.userLocation,
-            onDismiss = viewModel::onCloseStationExplorer,
-            onStationSelected = { station ->
-                onStationSelected(station, city)
-                viewModel.onCloseStationExplorer()
+    val mapNavArgs = state.toSearchMapNavArgs()
+    LaunchedEffect(state.isStationMapVisible, mapNavArgs) {
+        if (state.isStationMapVisible) {
+            if (mapNavArgs != null) {
+                navigator.navigate(SearchMapScreenDestination(args = mapNavArgs))
             }
-        )
+            viewModel.onCloseStationExplorer()
+        }
     }
 }

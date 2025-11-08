@@ -1,6 +1,7 @@
 package st.misa.bgpp_native.bgpp.presentation.map.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -19,11 +20,17 @@ import androidx.compose.material.icons.rounded.Route
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -31,18 +38,43 @@ import androidx.compose.ui.unit.dp
 import st.misa.bgpp_native.R
 import st.misa.bgpp_native.bgpp.presentation.models.StationUi
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun StationSelectionBottomSheet(
     station: StationUi?,
     modifier: Modifier = Modifier,
     onShowArrivals: (StationUi) -> Unit
 ) {
+    var displayedStation by remember { mutableStateOf<StationUi?>(null) }
+    val visibilityState = remember { MutableTransitionState(false) }
+
+    LaunchedEffect(station) {
+        if (station != null) {
+            displayedStation = station
+            visibilityState.targetState = true
+        } else {
+            visibilityState.targetState = false
+        }
+    }
+
+    LaunchedEffect(visibilityState.currentState, visibilityState.targetState) {
+        if (!visibilityState.currentState && !visibilityState.targetState) {
+            displayedStation = null
+        }
+    }
+
     AnimatedVisibility(
-        visible = station != null,
-        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+        visibleState = visibilityState,
+        enter = slideInVertically(
+            initialOffsetY = { it },
+            animationSpec = MaterialTheme.motionScheme.fastSpatialSpec()
+        ) + fadeIn(animationSpec = MaterialTheme.motionScheme.fastEffectsSpec()),
+        exit = slideOutVertically(
+            targetOffsetY = { it },
+            animationSpec = MaterialTheme.motionScheme.fastSpatialSpec()
+        ) + fadeOut(animationSpec = MaterialTheme.motionScheme.fastEffectsSpec())
     ) {
-        station?.let {
+        displayedStation?.let {
             StationSelectionCard(
                 station = it,
                 modifier = modifier.fillMaxWidth(),

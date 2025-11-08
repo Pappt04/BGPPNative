@@ -12,6 +12,7 @@ data class StationMapUiState(
     val stations: List<StationUi> = emptyList(),
     val markers: List<StationMapMarker> = emptyList(),
     val highlightedStationId: String? = null,
+    val stickySelectedStation: StationUi? = null,
     val cameraState: StationMapCameraState = StationMapCameraState(),
     val isLoading: Boolean = false,
     val statusMessage: String? = null,
@@ -22,13 +23,12 @@ data class StationMapUiState(
 ) {
     val renderState: StationMapRenderState = StationMapRenderState(
         markers = markers,
-        highlightedMarkerId = highlightedStationId,
+        highlightedMarkerId = stickySelectedStation?.id ?: highlightedStationId,
         cameraState = cameraState,
         arrivalMarkers = arrivalMarkers,
         userLocation = userLocation
     )
 
-    val selectedStation: StationUi? = highlightedStationId?.let { id ->
-        stations.firstOrNull { it.id == id }
-    }
+    val selectedStation: StationUi? = stickySelectedStation
+        ?: highlightedStationId?.let { id -> stations.firstOrNull { it.id == id } }
 }

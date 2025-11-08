@@ -10,6 +10,7 @@ fun interface StationMapRenderer {
         state: StationMapRenderState,
         modifier: Modifier,
         onViewportChanged: (BoundingBox) -> Unit,
-        onMarkerClick: (String) -> Unit
+        onMarkerClick: (String) -> Unit,
+        onMapTap: () -> Unit
     )
 }

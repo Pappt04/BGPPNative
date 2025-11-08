@@ -35,5 +35,6 @@ data class StationMapRenderState(
     val highlightedMarkerId: String? = null,
     val cameraState: StationMapCameraState = StationMapCameraState(),
     val arrivalMarkers: List<ArrivalMapMarker> = emptyList(),
-    val userLocation: Coords? = null
+    val userLocation: Coords? = null,
+    val highlightedArrivalMarkerId: String? = null
 )

@@ -18,6 +18,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -210,7 +216,7 @@ fun ArrivalsScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun ArrivalsContent(
     state: ArrivalsUiState,
@@ -233,7 +239,6 @@ fun ArrivalsContent(
                 cityName = state.cityName,
                 isFavorite = state.isFavorite,
                 onBack = onBack,
-                onRefresh = onRefresh,
                 onToggleFavorite = onToggleFavorite
             )
         },
@@ -257,71 +262,89 @@ fun ArrivalsContent(
             }
         }
     ) { padding ->
-        when {
-            state.isLoading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    androidx.compose.material3.CircularProgressIndicator()
-                }
-            }
-            state.errorMessage != null && state.lines.isEmpty() -> {
-                ArrivalsError(
-                    message = state.errorMessage,
-                    onRetry = onRefresh,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                )
-            }
-            else -> {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    item(key = "station_header") {
-                        StationOverviewCard(
-                            stationId = state.stationId,
-                            stationName = state.stationName,
-                            cityName = state.cityName
-                        )
+        val pullRefreshState = rememberPullRefreshState(
+            refreshing = state.isLoading,
+            onRefresh = onRefresh
+        )
+        val emptyStateScroll = rememberScrollState()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .pullRefresh(pullRefreshState)
+        ) {
+            when {
+                state.isLoading && state.lines.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(emptyStateScroll),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
                     }
+                }
 
-                    if (state.errorMessage != null) {
-                        item(key = "inline_error") {
-                            ArrivalsError(
-                                message = state.errorMessage,
-                                onRetry = onRefresh,
-                                modifier = Modifier.fillMaxWidth()
+                state.errorMessage != null && state.lines.isEmpty() -> {
+                    ArrivalsError(
+                        message = state.errorMessage,
+                        onRetry = onRefresh,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(emptyStateScroll)
+                    )
+                }
+
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        item(key = "station_header") {
+                            StationOverviewCard(
+                                stationId = state.stationId,
+                                stationName = state.stationName,
+                                cityName = state.cityName
+                            )
+                        }
+
+                        if (state.errorMessage != null) {
+                            item(key = "inline_error") {
+                                ArrivalsError(
+                                    message = state.errorMessage,
+                                    onRetry = onRefresh,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+
+                        items(
+                            items = state.lines,
+                            key = { it.number }
+                        ) { line ->
+                            LineArrivalCard(
+                                line = line,
+                                expanded = state.expandedLineIds.contains(line.number),
+                                onToggle = { onToggleLine(line.number) },
+                                onRequestNotification = { arrival ->
+                                    notificationState = NotificationDialogState(
+                                        lineNumber = line.number,
+                                        lineName = line.displayName,
+                                        arrival = arrival
+                                    )
+                                }
                             )
                         }
                     }
-
-                    items(
-                        items = state.lines,
-                        key = { it.number }
-                    ) { line ->
-                        LineArrivalCard(
-                            line = line,
-                            expanded = state.expandedLineIds.contains(line.number),
-                            onToggle = { onToggleLine(line.number) },
-                            onRequestNotification = { arrival ->
-                                notificationState = NotificationDialogState(
-                                    lineNumber = line.number,
-                                    lineName = line.displayName,
-                                    arrival = arrival
-                                )
-                            }
-                        )
-                    }
                 }
             }
+
+            PullRefreshIndicator(
+                refreshing = state.isLoading,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
         }
     }
 

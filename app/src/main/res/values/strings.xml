@@ -6,6 +6,7 @@
     <string name="search_title">Search stations</string>
     <string name="search_map_content_description">Map search</string>
     <string name="search_preferences_content_description">Preferences</string>
+    <string name="search_favorites_content_description">Favorite stations</string>
     <string name="search_placeholder">Search stations</string>
     <string name="search_search_icon_content_description">Search</string>
     <string name="search_using_city_center">Using city center for distances</string>
@@ -98,4 +99,11 @@
     <string name="arrivals_map_eta_stops">%1$d min • %2$d stops away</string>
     <string name="arrivals_map_eta_unknown">Live arrival time unavailable</string>
     <string name="arrivals_map_current_station">Currently near %1$s</string>
+
+    <!-- Favorite stations -->
+    <string name="favorite_stations_title">Favorite stations</string>
+    <string name="favorite_stations_empty">You don’t have any favorite stations yet.</string>
+    <string name="favorite_stations_error_loading">Unable to load favorite stations.</string>
+    <string name="favorite_stations_retry">Refresh</string>
+    <string name="favorite_stations_back_content_description">Back to search</string>
 </resources>

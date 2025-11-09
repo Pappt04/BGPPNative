@@ -32,6 +32,7 @@ import st.misa.bgpp_native.bgpp.presentation.map.StationMapViewModel
 import st.misa.bgpp_native.bgpp.presentation.map.provider.MapLibreStationMapRenderer
 import st.misa.bgpp_native.bgpp.presentation.map.provider.StationMapStyleProvider
 import st.misa.bgpp_native.bgpp.presentation.map.provider.ThunderforestTransportStyleProvider
+import st.misa.bgpp_native.bgpp.presentation.search.FavoriteStationsViewModel
 import st.misa.bgpp_native.bgpp.presentation.search.SearchViewModel
 import st.misa.bgpp_native.core.data.location.DefaultLocationRepository
 import st.misa.bgpp_native.core.data.resources.AndroidStringProvider
@@ -118,6 +119,14 @@ val appModule = module {
             locationRepository = get(),
             distanceRepository = get(),
             stringProvider = get()
+        )
+    }
+
+    viewModel { (args: FavoriteStationsViewModel.Args) ->
+        FavoriteStationsViewModel(
+            stationRepository = get(),
+            stringProvider = get(),
+            args = args
         )
     }
 

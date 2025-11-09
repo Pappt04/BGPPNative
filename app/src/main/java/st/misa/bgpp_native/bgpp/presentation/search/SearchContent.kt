@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -34,6 +36,7 @@ import st.misa.bgpp_native.bgpp.presentation.search.components.SearchTopBar
 fun SearchContent(
     state: SearchUiState,
     onQueryChange: (String) -> Unit,
+    onOpenFavorites: () -> Unit,
     onOpenPreferences: () -> Unit,
     onClosePreferences: () -> Unit,
     onApplyPreferences: (SearchPreferences) -> Unit,
@@ -52,6 +55,7 @@ fun SearchContent(
         topBar = {
             SearchTopBar(
                 cityName = state.selectedCity?.name,
+                onOpenFavorites = onOpenFavorites,
                 onOpenPreferences = onOpenPreferences
             )
         },
@@ -64,16 +68,25 @@ fun SearchContent(
             }
         }
     ) { padding ->
+        val emptyStateScroll = rememberScrollState()
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .pullRefresh(pullRefreshState)
         ) {
-            Column(
-                modifier = Modifier
+            val columnModifier = if (state.stations.isEmpty()) {
+                Modifier
+                    .verticalScroll(emptyStateScroll)
                     .fillMaxSize()
                     .padding(horizontal = 16.dp)
+            } else {
+                Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp)
+            }
+            Column(
+                modifier = columnModifier
             ) {
                 SearchInput(query = state.searchQuery, onQueryChange = onQueryChange)
                 Spacer(Modifier.height(12.dp))

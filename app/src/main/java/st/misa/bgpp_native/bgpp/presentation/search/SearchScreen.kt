@@ -13,6 +13,7 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
 import st.misa.bgpp_native.bgpp.presentation.destinations.ArrivalsScreenDestination
+import st.misa.bgpp_native.bgpp.presentation.destinations.FavoriteStationsScreenDestination
 import st.misa.bgpp_native.bgpp.presentation.destinations.SearchMapScreenDestination
 import st.misa.bgpp_native.bgpp.presentation.navigation.StationSelection
 import st.misa.bgpp_native.bgpp.presentation.navigation.toSearchMapNavArgs
@@ -58,6 +59,11 @@ fun SearchScreen(
     SearchContent(
         state = state,
         onQueryChange = viewModel::onQueryChanged,
+        onOpenFavorites = {
+            state.selectedCity?.let { city ->
+                navigator.navigate(FavoriteStationsScreenDestination(city = city))
+            }
+        },
         onOpenPreferences = viewModel::onOpenPreferences,
         onClosePreferences = viewModel::onClosePreferences,
         onApplyPreferences = viewModel::onPreferencesApplied,

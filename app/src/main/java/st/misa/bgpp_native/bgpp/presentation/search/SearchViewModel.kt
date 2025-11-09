@@ -83,12 +83,6 @@ class SearchViewModel(
     fun onOpenStationExplorer() {
         val currentState = _state.value
         val city = currentState.selectedCity ?: return
-        if (currentState.stations.isEmpty()) {
-            _state.value = currentState.copy(
-                errorMessage = stringProvider.getString(R.string.station_map_error_no_seed)
-            )
-            return
-        }
         _state.value = currentState.copy(
             isStationMapVisible = true,
             stationMapSeed = currentState.stations

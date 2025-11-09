@@ -51,7 +51,6 @@ fun SearchUiState.toSearchMapNavArgs(): SearchMapNavArgs? {
     val city = selectedCity ?: return null
     val origin = mapOrigin ?: city.center
     val seedStations = stationMapSeed.ifEmpty { stations }
-    if (seedStations.isEmpty()) return null
     return SearchMapNavArgs(
         city = city,
         seedStations = seedStations,

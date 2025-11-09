@@ -28,7 +28,6 @@ class DataStoreSearchPreferencesRepository(
         val CITY_ID = stringPreferencesKey("city_id")
         val RANGE_METERS = doublePreferencesKey("range_meters")
         val DISTANCE_TYPE = stringPreferencesKey("distance_type")
-        val OSRM_BASE_URL = stringPreferencesKey("osrm_base_url")
     }
 
     override val preferencesFlow: Flow<SearchPreferences> = context.dataStore.data
@@ -50,7 +49,6 @@ class DataStoreSearchPreferencesRepository(
             updated.cityId?.let { mutablePreferences[Keys.CITY_ID] = it } ?: mutablePreferences.remove(Keys.CITY_ID)
             mutablePreferences[Keys.RANGE_METERS] = updated.rangeMeters
             mutablePreferences[Keys.DISTANCE_TYPE] = updated.distanceType.name
-            mutablePreferences[Keys.OSRM_BASE_URL] = updated.osrmBaseUrl
         }
     }
 
@@ -58,12 +56,10 @@ class DataStoreSearchPreferencesRepository(
         val cityId = this[Keys.CITY_ID]
         val range = this[Keys.RANGE_METERS] ?: SearchPreferences.DEFAULT_RANGE_METERS
         val distanceType = DistanceType.fromNameOrNull(this[Keys.DISTANCE_TYPE]) ?: DistanceType.AIR
-        val osrmBaseUrl = this[Keys.OSRM_BASE_URL] ?: SearchPreferences.DEFAULT_OSRM_BASE_URL
         return SearchPreferences(
             cityId = cityId,
             rangeMeters = range,
-            distanceType = distanceType,
-            osrmBaseUrl = osrmBaseUrl
+            distanceType = distanceType
         )
     }
 }

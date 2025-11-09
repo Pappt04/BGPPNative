@@ -34,6 +34,9 @@ android {
 
         val thunderforestKey = localProperties.getProperty("thunderforest.apiKey") ?: ""
         buildConfigField("String", "THUNDERFOREST_API_KEY", "\"$thunderforestKey\"")
+
+        val geoapifyKey = localProperties.getProperty("geoapify.apiKey") ?: ""
+        buildConfigField("String", "GEOAPIFY_API_KEY", "\"$geoapifyKey\"")
     }
 
     buildTypes {

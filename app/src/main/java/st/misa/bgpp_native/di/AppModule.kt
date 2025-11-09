@@ -7,9 +7,10 @@ import io.ktor.client.engine.okhttp.OkHttp
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
+import st.misa.bgpp_native.BuildConfig
 import st.misa.bgpp_native.bgpp.data.local.AppDatabase
 import st.misa.bgpp_native.bgpp.data.local.StationDBRepositoryImpl
-import st.misa.bgpp_native.bgpp.data.networking.OsrmDistanceRepository
+import st.misa.bgpp_native.bgpp.data.networking.GeoapifyDistanceRepository
 import st.misa.bgpp_native.bgpp.data.networking.RemoteBGPPDataRepositoryImpl
 import st.misa.bgpp_native.bgpp.data.preferences.DataStoreSearchPreferencesRepository
 import st.misa.bgpp_native.bgpp.data.notifications.AndroidArrivalNotificationPublisher
@@ -106,7 +107,7 @@ val appModule = module {
 
     single<StringProvider> { AndroidStringProvider(androidContext()) }
 
-    single<DistanceRepository> { OsrmDistanceRepository(get()) }
+    single<DistanceRepository> { GeoapifyDistanceRepository(get(), BuildConfig.GEOAPIFY_API_KEY) }
 
     single<StationMapStyleProvider> { ThunderforestTransportStyleProvider() }
     single<StationMapRenderer> { MapLibreStationMapRenderer(styleProvider = get()) }

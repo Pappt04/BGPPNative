@@ -4,8 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -314,12 +312,10 @@ class SearchViewModel(
         val walkingTargets = stationsWithAir.take(MAX_WALKING_REQUESTS)
         val remaining = stationsWithAir.drop(MAX_WALKING_REQUESTS)
 
-        val walkingEnriched = coroutineScope {
-            walkingTargets.map { (station, airDistance) ->
-                async(ioDispatcher) {
-                    computeWalkingDistance(station, origin, preferences, airDistance)
-                }
-            }.mapNotNull { it.await() }
+        val walkingEnriched = if (walkingTargets.isEmpty()) {
+            emptyList()
+        } else {
+            computeWalkingDistances(walkingTargets, origin)
         }
 
         val others = remaining.map { (station, airDistance) ->
@@ -344,28 +340,35 @@ class SearchViewModel(
         }
     }
 
-    private suspend fun computeWalkingDistance(
-        station: Station,
-        origin: Coords,
-        preferences: SearchPreferences,
-        airDistance: Double
-    ): StationUi {
-        val result = distanceRepository.calculateDistance(
+    private suspend fun computeWalkingDistances(
+        walkingTargets: List<Pair<Station, Double>>,
+        origin: Coords
+    ): List<StationUi> {
+        val destinations = walkingTargets.map { (station, _) -> station.coords }
+        val result = distanceRepository.calculateMatrix(
             origin = origin,
-            destination = station.coords,
-            distanceType = DistanceType.WALKING,
-            osrmBaseUrl = preferences.osrmBaseUrl
+            destinations = destinations,
+            distanceType = DistanceType.WALKING
         )
+        val fallback = walkingTargets.map { (station, airDistance) ->
+            station.toUi(airDistanceInMeters = airDistance)
+        }
         return when (result) {
-            is Result.Error -> station.toUi(airDistanceInMeters = airDistance)
+            is Result.Error -> fallback
             is Result.Success -> {
-                val distanceMeters = result.data.distanceMeters
-                val durationMinutes = result.data.durationSeconds?.div(60)?.roundToInt()
-                station.toUi(
-                    airDistanceInMeters = airDistance,
-                    walkingDistanceInMeters = distanceMeters,
-                    walkingDurationInMinutes = durationMinutes
-                )
+                walkingTargets.mapIndexed { index, (station, airDistance) ->
+                    val distanceResult = result.data.getOrNull(index)
+                    if (distanceResult != null) {
+                        val durationMinutes = distanceResult.durationSeconds?.div(60)?.roundToInt()
+                        station.toUi(
+                            airDistanceInMeters = airDistance,
+                            walkingDistanceInMeters = distanceResult.distanceMeters,
+                            walkingDurationInMinutes = durationMinutes
+                        )
+                    } else {
+                        station.toUi(airDistanceInMeters = airDistance)
+                    }
+                }
             }
         }
     }

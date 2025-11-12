@@ -3,10 +3,7 @@ package st.misa.bgpp_native.bgpp.presentation.search.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material3.AlertDialog
@@ -29,7 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import st.misa.bgpp_native.R
 import st.misa.bgpp_native.bgpp.domain.model.City
@@ -53,7 +49,6 @@ fun PreferencesDialog(
         mutableFloatStateOf(preferences.rangeMeters.toFloat())
     }
     var distanceType by remember(preferences.distanceType) { mutableStateOf(preferences.distanceType) }
-    var osrmBaseUrl by remember(preferences.osrmBaseUrl) { mutableStateOf(preferences.osrmBaseUrl) }
 
     AlertDialog(
         modifier = modifier,
@@ -64,8 +59,7 @@ fun PreferencesDialog(
                     SearchPreferences(
                         cityId = selectedCityId.ifBlank { null },
                         rangeMeters = rangeMeters.toDouble(),
-                        distanceType = distanceType,
-                        osrmBaseUrl = osrmBaseUrl
+                        distanceType = distanceType
                     )
                 )
             }) {
@@ -133,18 +127,6 @@ fun PreferencesDialog(
                         distanceType = DistanceType.WALKING,
                         selected = distanceType == DistanceType.WALKING,
                         onSelected = { distanceType = DistanceType.WALKING }
-                    )
-                }
-
-                if (distanceType == DistanceType.WALKING) {
-                    Spacer(modifier = modifier.height(8.dp))
-                    OutlinedTextField(
-                        modifier = modifier.fillMaxWidth(),
-                        value = osrmBaseUrl,
-                        onValueChange = { osrmBaseUrl = it },
-                        label = { Text(stringResource(id = R.string.search_preferences_osrm_label)) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                        singleLine = true
                     )
                 }
             }

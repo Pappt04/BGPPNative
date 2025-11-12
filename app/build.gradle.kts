@@ -1,3 +1,4 @@
+import com.android.build.api.dsl.Packaging
 import java.io.FileInputStream
 import java.util.Properties
 
@@ -15,6 +16,7 @@ if (localPropertiesFile.exists()) {
     localProperties.load(FileInputStream(localPropertiesFile))
 }
 
+android.buildFeatures.buildConfig = true
 
 
 android {
@@ -29,6 +31,12 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        val thunderforestKey = localProperties.getProperty("thunderforest.apiKey") ?: ""
+        buildConfigField("String", "THUNDERFOREST_API_KEY", "\"$thunderforestKey\"")
+
+        val geoapifyKey = localProperties.getProperty("geoapify.apiKey") ?: ""
+        buildConfigField("String", "GEOAPIFY_API_KEY", "\"$geoapifyKey\"")
     }
 
     buildTypes {
@@ -39,6 +47,31 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+
+            packaging {
+                jniLibs {
+                    useLegacyPackaging = false
+                }
+                resources {
+                    excludes += listOf(
+                        "META-INF/*.kotlin_module",
+                        "**/*.txt",
+                        "**/*.md",
+                        "**/*.so.debug",
+                        "**/*.sym",
+                        "**/*.json",
+                        // native stuff
+                        "META-INF/native/**",
+                        "org/sqlite/native/**",
+                        "org/sqlite/native/Windows/**",
+                        "org/sqlite/native/Mac/**",
+                        "org/sqlite/native/Linux/**",
+                        "**/*.dll",
+                        "**/*.dylib",
+                        "**/*.jnilib"
+                    )
+                }
+            }
         }
     }
     compileOptions {
@@ -50,6 +83,23 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+
+    // Ensure unwanted ABIs aren't included
+    fun Packaging.() {
+        jniLibs {
+            excludes += listOf("**/x86/**", "**/x86_64/**")
+        }
+    }
+
+    // Optional per-ABI APKs (good if you’re not using AAB)
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+            isUniversalApk = false
+        }
     }
 }
 
@@ -73,6 +123,8 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.compose.material.icons.extended)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.compose.destinations.core)
+    implementation(libs.compose.destinations.animations)
 
 
 
@@ -83,8 +135,12 @@ dependencies {
     implementation(libs.bundles.room)
     implementation(libs.material3)
     ksp(libs.androidx.room.compiler)
+    ksp(libs.compose.destinations.ksp)
 
     implementation(libs.androidx.datastore.preferences)
+
+    implementation(libs.maplibreAndroid)
+    implementation("org.maplibre.gl:android-plugin-annotation-v9:3.0.2")
 
 
     testImplementation(libs.junit)

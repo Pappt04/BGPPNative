@@ -52,9 +52,6 @@ fun SearchResults(
             contentAlignment = Alignment.Center
         ) {
             when {
-                state.isLoading -> {
-                    CircularProgressIndicator()
-                }
                 state.errorMessage != null && state.stations.isEmpty() -> {
                     ErrorContent(
                         message = state.errorMessage,

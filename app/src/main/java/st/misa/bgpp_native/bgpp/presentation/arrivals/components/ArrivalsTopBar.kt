@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -24,7 +23,6 @@ fun ArrivalsTopBar(
     cityName: String,
     isFavorite: Boolean,
     onBack: () -> Unit,
-    onRefresh: () -> Unit,
     onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -53,12 +51,6 @@ fun ArrivalsTopBar(
             }
         },
         actions = {
-            IconButton(onClick = onRefresh) {
-                Icon(
-                    imageVector = Icons.Outlined.Refresh,
-                    contentDescription = stringResource(id = R.string.arrivals_refresh_content_description)
-                )
-            }
             IconButton(onClick = onToggleFavorite) {
                 Icon(
                     imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Outlined.FavoriteBorder,

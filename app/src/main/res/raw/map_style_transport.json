@@ -1,0 +1,24 @@
+{
+  "version": 8,
+  "name": "Thunderforest Transport",
+  "sources": {
+    "transport": {
+      "type": "raster",
+      "tiles": [
+        "https://tile.thunderforest.com/transport/{z}/{x}/{y}.png?apikey=%THUNDERFOREST_KEY%"
+      ],
+      "tileSize": 256,
+      "minzoom": 0,
+      "maxzoom": 22
+    }
+  },
+  "layers": [
+    {
+      "id": "transport",
+      "type": "raster",
+      "source": "transport",
+      "minzoom": 0,
+      "maxzoom": 22
+    }
+  ]
+}

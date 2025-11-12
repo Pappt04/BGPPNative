@@ -26,6 +26,7 @@ import st.misa.bgpp_native.bgpp.presentation.arrivals.ArrivalUi
 enum class NotificationMode { Minutes, Stations }
 
 data class NotificationDialogState(
+    val lineNumber: String,
     val lineName: String,
     val arrival: ArrivalUi,
     val selectedMode: NotificationMode = NotificationMode.Minutes,
@@ -36,19 +37,28 @@ data class NotificationDialogState(
 @Composable
 fun NotificationDialog(
     state: NotificationDialogState,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onConfirm: (NotificationMode, Int) -> Unit
 ) {
-    var mode by rememberSaveable(state.lineName, state.arrival) {
+    var mode by rememberSaveable(state.lineNumber, state.lineName, state.arrival) {
         mutableStateOf(state.selectedMode)
     }
-    var threshold by rememberSaveable(state.lineName, state.arrival) {
+    var threshold by rememberSaveable(state.lineNumber, state.arrival) {
         mutableStateOf(state.threshold)
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = {
+                    val parsedThreshold = threshold.toIntOrNull()
+                        ?: state.threshold.toIntOrNull()
+                        ?: 1
+                    onConfirm(mode, parsedThreshold)
+                    onDismiss()
+                }
+            ) {
                 Text(text = stringResource(id = R.string.arrivals_notification_confirm))
             }
         },

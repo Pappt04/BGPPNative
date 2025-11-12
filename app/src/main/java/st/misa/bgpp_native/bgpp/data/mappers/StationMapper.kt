@@ -44,10 +44,10 @@ fun Station.toUi(
 ): StationUi = StationUi(
     id = id,
     name = name,
+    coords = coords,
     airDistanceInMeters = airDistanceInMeters,
     walkingDistanceInMeters = walkingDistanceInMeters,
     walkingDurationInMinutes = walkingDurationInMinutes,
     favorite = favorite
 )
-
 

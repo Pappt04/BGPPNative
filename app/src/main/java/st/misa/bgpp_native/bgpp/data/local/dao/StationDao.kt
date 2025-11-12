@@ -35,6 +35,7 @@ interface StationDao {
         WHERE city = :city
           AND lat BETWEEN :minLat AND :maxLat
           AND lon BETWEEN :minLon AND :maxLon
+          ORDER BY abs(lat * lon * 1000000) % 7919 -- uniformly space selection on map
         LIMIT :limit
     """)
     suspend fun findStationsInBoundingBox(

@@ -1,6 +1,13 @@
 package st.misa.bgpp_native.bgpp.presentation.arrivals
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.widget.Toast
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,8 +15,16 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -18,20 +33,28 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ramcosta.composedestinations.annotation.Destination
+import com.ramcosta.composedestinations.annotation.RootNavGraph
+import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import st.misa.bgpp_native.bgpp.presentation.destinations.ArrivalsMapScreenDestination
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 import st.misa.bgpp_native.R
-import st.misa.bgpp_native.bgpp.domain.model.City
 import st.misa.bgpp_native.bgpp.presentation.arrivals.ArrivalsViewModel.Args
 import st.misa.bgpp_native.bgpp.presentation.arrivals.ArrivalUi
 import st.misa.bgpp_native.bgpp.presentation.arrivals.LineArrivalsUi
@@ -40,38 +63,160 @@ import st.misa.bgpp_native.bgpp.presentation.arrivals.components.ArrivalsTopBar
 import st.misa.bgpp_native.bgpp.presentation.arrivals.components.LineArrivalCard
 import st.misa.bgpp_native.bgpp.presentation.arrivals.components.NotificationDialog
 import st.misa.bgpp_native.bgpp.presentation.arrivals.components.NotificationDialogState
+import st.misa.bgpp_native.bgpp.presentation.arrivals.components.NotificationMode
 import st.misa.bgpp_native.bgpp.presentation.arrivals.components.StationOverviewCard
+import st.misa.bgpp_native.bgpp.presentation.navigation.ArrivalsMapNavArgs
+import st.misa.bgpp_native.bgpp.presentation.navigation.StationSelection
 import st.misa.bgpp_native.core.domain.model.Coords
 import st.misa.bgpp_native.ui.theme.BGPPTheme
 
+private data class PendingNotification(
+    val lineNumber: String,
+    val lineName: String,
+    val arrival: ArrivalUi,
+    val mode: NotificationMode,
+    val threshold: Int
+)
+
+@RootNavGraph
+@Destination(route = "arrivals")
 @Composable
 fun ArrivalsScreen(
-    city: City,
-    stationId: String,
-    stationName: String,
-    onBack: () -> Unit,
-    modifier: Modifier = Modifier,
-    viewModel: ArrivalsViewModel = koinViewModel(
-        key = "arrivals_${city.id}_${stationId}",
+    selection: StationSelection,
+    navigator: DestinationsNavigator,
+    modifier: Modifier = Modifier
+) {
+    val city = remember(selection) { selection.toCity() }
+    val context = LocalContext.current
+    val activity = remember(context) { context as ComponentActivity }
+    val viewModel: ArrivalsViewModel = koinViewModel(
+        key = "arrivals_${city.id}_${selection.stationId}",
+        viewModelStoreOwner = activity,
         parameters = {
-            parametersOf(Args(city = city, stationId = stationId, stationName = stationName))
+            parametersOf(Args(city = city, stationId = selection.stationId, stationName = selection.stationName))
         }
     )
-) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    BackHandler(onBack = onBack)
+    val coroutineScope = rememberCoroutineScope()
+    val pendingNotification = remember { mutableStateOf<PendingNotification?>(null) }
+    var isWaitingForLocation by rememberSaveable { mutableStateOf(false) }
+    var shouldRefreshLocationAfterPermission by rememberSaveable { mutableStateOf(false) }
+    val showSavedToast = {
+        Toast.makeText(
+            context,
+            context.getString(R.string.arrival_notification_saved),
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+    val showLocationError = {
+        Toast.makeText(
+            context,
+            context.getString(R.string.arrival_location_error),
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
+    val openMapScreen: () -> Unit = {
+        navigator.navigate(ArrivalsMapScreenDestination(args = ArrivalsMapNavArgs(selection = selection)))
+    }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val request = pendingNotification.value
+        if (granted && request != null) {
+            viewModel.registerArrivalNotification(
+                lineNumber = request.lineNumber,
+                lineName = request.lineName,
+                arrival = request.arrival,
+                mode = request.mode,
+                threshold = request.threshold
+            )
+            showSavedToast()
+        }
+        pendingNotification.value = null
+    }
+
+    val requestLocationRefresh: () -> Unit = refresh@{
+        if (isWaitingForLocation) return@refresh
+        isWaitingForLocation = true
+        coroutineScope.launch {
+            try {
+                val latestLocation = viewModel.refreshUserLocation()
+                if (latestLocation == null) {
+                    showLocationError()
+                }
+            } finally {
+                isWaitingForLocation = false
+            }
+        }
+    }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = permissions.values.any { it }
+        if (shouldRefreshLocationAfterPermission) {
+            if (granted) {
+                requestLocationRefresh()
+            } else {
+                showLocationError()
+            }
+            shouldRefreshLocationAfterPermission = false
+        }
+    }
+
+    val handleNotificationRequest: (String, String, ArrivalUi, NotificationMode, Int) -> Unit = { lineNumber, lineName, arrival, mode, threshold ->
+        val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+        val hasPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (needsPermission && !hasPermission) {
+            pendingNotification.value = PendingNotification(lineNumber, lineName, arrival, mode, threshold)
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            viewModel.registerArrivalNotification(lineNumber, lineName, arrival, mode, threshold)
+            showSavedToast()
+        }
+    }
+
+    val handleMapClick: () -> Unit = handleMapClick@{
+        openMapScreen()
+        if (viewModel.hasLocationPermission()) {
+            requestLocationRefresh()
+        } else {
+            shouldRefreshLocationAfterPermission = true
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+
+    val handleBack: () -> Unit = {
+        navigator.popBackStack()
+        Unit
+    }
+    BackHandler(onBack = handleBack)
 
     ArrivalsContent(
         state = state,
-        onBack = onBack,
+        onBack = handleBack,
         onRefresh = viewModel::refresh,
         onToggleFavorite = viewModel::toggleFavorite,
         onToggleLine = viewModel::toggleLine,
+        onMapClick = handleMapClick,
+        isWaitingForLocation = isWaitingForLocation,
+        onRegisterNotification = handleNotificationRequest,
         modifier = modifier
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun ArrivalsContent(
     state: ArrivalsUiState,
@@ -79,6 +224,9 @@ fun ArrivalsContent(
     onRefresh: () -> Unit,
     onToggleFavorite: () -> Unit,
     onToggleLine: (String) -> Unit,
+    onMapClick: () -> Unit,
+    isWaitingForLocation: Boolean,
+    onRegisterNotification: (lineNumber: String, lineName: String, arrival: ArrivalUi, mode: NotificationMode, threshold: Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var notificationState by rememberSaveable { mutableStateOf<NotificationDialogState?>(null) }
@@ -91,90 +239,128 @@ fun ArrivalsContent(
                 cityName = state.cityName,
                 isFavorite = state.isFavorite,
                 onBack = onBack,
-                onRefresh = onRefresh,
                 onToggleFavorite = onToggleFavorite
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { /* TODO: Navigate to map */ }) {
-                Icon(
-                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_map),
-                    contentDescription = stringResource(id = R.string.arrivals_map_content_description)
-                )
+            FloatingActionButton(onClick = {
+                if (!isWaitingForLocation) {
+                    onMapClick()
+                }
+            }) {
+                if (isWaitingForLocation) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(id = R.drawable.ic_map),
+                        contentDescription = stringResource(id = R.string.arrivals_map_content_description)
+                    )
+                }
             }
         }
     ) { padding ->
-        when {
-            state.isLoading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    androidx.compose.material3.CircularProgressIndicator()
-                }
-            }
-            state.errorMessage != null && state.lines.isEmpty() -> {
-                ArrivalsError(
-                    message = state.errorMessage,
-                    onRetry = onRefresh,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                )
-            }
-            else -> {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    item(key = "station_header") {
-                        StationOverviewCard(
-                            stationId = state.stationId,
-                            stationName = state.stationName,
-                            cityName = state.cityName
-                        )
+        val pullRefreshState = rememberPullRefreshState(
+            refreshing = state.isLoading,
+            onRefresh = onRefresh
+        )
+        val emptyStateScroll = rememberScrollState()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .pullRefresh(pullRefreshState)
+        ) {
+            when {
+                state.isLoading && state.lines.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(emptyStateScroll),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
                     }
+                }
 
-                    if (state.errorMessage != null) {
-                        item(key = "inline_error") {
-                            ArrivalsError(
-                                message = state.errorMessage,
-                                onRetry = onRefresh,
-                                modifier = Modifier.fillMaxWidth()
+                state.errorMessage != null && state.lines.isEmpty() -> {
+                    ArrivalsError(
+                        message = state.errorMessage,
+                        onRetry = onRefresh,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(emptyStateScroll)
+                    )
+                }
+
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        item(key = "station_header") {
+                            StationOverviewCard(
+                                stationId = state.stationId,
+                                stationName = state.stationName,
+                                cityName = state.cityName
+                            )
+                        }
+
+                        if (state.errorMessage != null) {
+                            item(key = "inline_error") {
+                                ArrivalsError(
+                                    message = state.errorMessage,
+                                    onRetry = onRefresh,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+
+                        items(
+                            items = state.lines,
+                            key = { it.number }
+                        ) { line ->
+                            LineArrivalCard(
+                                line = line,
+                                expanded = state.expandedLineIds.contains(line.number),
+                                onToggle = { onToggleLine(line.number) },
+                                onRequestNotification = { arrival ->
+                                    notificationState = NotificationDialogState(
+                                        lineNumber = line.number,
+                                        lineName = line.displayName,
+                                        arrival = arrival
+                                    )
+                                }
                             )
                         }
                     }
-
-                    items(
-                        items = state.lines,
-                        key = { it.number }
-                    ) { line ->
-                        LineArrivalCard(
-                            line = line,
-                            expanded = state.expandedLineIds.contains(line.number),
-                            onToggle = { onToggleLine(line.number) },
-                            onRequestNotification = { arrival ->
-                                notificationState = NotificationDialogState(
-                                    lineName = line.displayName,
-                                    arrival = arrival
-                                )
-                            }
-                        )
-                    }
                 }
             }
+
+            PullRefreshIndicator(
+                refreshing = state.isLoading,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
         }
     }
 
     notificationState?.let { dialogState ->
         NotificationDialog(
             state = dialogState,
-            onDismiss = { notificationState = null }
+            onDismiss = { notificationState = null },
+            onConfirm = { mode, threshold ->
+                onRegisterNotification(
+                    dialogState.lineNumber,
+                    dialogState.lineName,
+                    dialogState.arrival,
+                    mode,
+                    threshold
+                )
+            }
         )
     }
 }
@@ -213,7 +399,9 @@ private fun ArrivalsPreview() {
             )
         ),
         expandedLineIds = setOf("69"),
-        isLoading = false
+        isLoading = false,
+        stationCoords = Coords(45.246, 19.837),
+        userLocation = Coords(45.24, 19.83)
     )
 
     BGPPTheme {
@@ -224,6 +412,9 @@ private fun ArrivalsPreview() {
                 onRefresh = {},
                 onToggleFavorite = {},
                 onToggleLine = {},
+                onMapClick = {},
+                isWaitingForLocation = false,
+                onRegisterNotification = { _, _, _, _, _ -> },
             )
         }
     }

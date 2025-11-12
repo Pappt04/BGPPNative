@@ -6,11 +6,13 @@
     <string name="search_title">Search stations</string>
     <string name="search_map_content_description">Map search</string>
     <string name="search_preferences_content_description">Preferences</string>
+    <string name="search_favorites_content_description">Favorite stations</string>
     <string name="search_placeholder">Search stations</string>
     <string name="search_search_icon_content_description">Search</string>
     <string name="search_using_city_center">Using city center for distances</string>
     <string name="search_no_results">No stations match your criteria.</string>
     <string name="search_retry">Retry</string>
+    <string name="station_map_error_no_seed">No nearby stations yet. Try refreshing first.</string>
 
     <!-- Preferences dialog -->
     <string name="search_preferences_title">Search preferences</string>
@@ -23,7 +25,6 @@
     <string name="search_preferences_distance_type">Distance type</string>
     <string name="search_preferences_distance_air">Air</string>
     <string name="search_preferences_distance_walking">Walking</string>
-    <string name="search_preferences_osrm_label">OSRM base URL</string>
 
     <!-- Error messages -->
     <string name="error_no_internet">No internet connection</string>
@@ -67,4 +68,41 @@
     <string name="arrivals_notification_stations">Stations</string>
     <string name="arrivals_notification_minutes_label">Minutes away</string>
     <string name="arrivals_notification_stations_label">Stations away</string>
+    <string name="arrival_notification_channel_name">Arrival alerts</string>
+    <string name="arrival_notification_channel_description">Alerts when tracked buses are close to your station.</string>
+    <string name="arrival_notification_title">Line %1$s is approaching</string>
+    <string name="arrival_notification_minutes_message">Line %1$s reaches %3$s in %2$d minutes.</string>
+    <string name="arrival_notification_stations_message">Line %1$s is %2$d stations away from %3$s.</string>
+    <string name="arrival_notification_saved">Arrival alert saved.</string>
+    <string name="arrival_location_error">Couldn’t get your location. Check GPS and try again.</string>
+    <string name="arrival_monitor_channel_name">Arrival monitoring</string>
+    <string name="arrival_monitor_title">Monitoring arrivals</string>
+    <string name="arrival_monitor_body">Keeping your arrival alerts up to date.</string>
+
+    <!-- Station map dialog -->
+    <string name="station_map_title">Stations</string>
+    <string name="station_map_subtitle">Thunderforest Transport map</string>
+    <string name="station_map_focus_nearest">Nearest area</string>
+    <string name="station_map_using_city_center">Using city center</string>
+    <string name="station_map_hint_tap_marker">Tap a pin to preview and choose a stop.</string>
+    <string name="station_map_action_arrivals">Show arrivals</string>
+    <string name="station_map_action_close">Close map</string>
+    <string name="station_map_station_id">ID • %1$s</string>
+    <string name="station_map_distance_walking">%1$.1f km • %2$d min walk</string>
+    <string name="station_map_distance_walking_only">%1$.1f km walk</string>
+    <string name="station_map_distance_air">%1$.0f m away</string>
+    <string name="station_map_distance_unknown">Distance unavailable</string>
+    <string name="station_map_empty_viewport">No stations in view. Pan or zoom to search a new area.</string>
+    <string name="station_map_recenter_content_description">Recenter map</string>
+    <string name="arrivals_map_eta_minutes">Next bus in %1$d min</string>
+    <string name="arrivals_map_eta_stops">%1$d min • %2$d stops away</string>
+    <string name="arrivals_map_eta_unknown">Live arrival time unavailable</string>
+    <string name="arrivals_map_current_station">Currently near %1$s</string>
+
+    <!-- Favorite stations -->
+    <string name="favorite_stations_title">Favorite stations</string>
+    <string name="favorite_stations_empty">You don’t have any favorite stations yet.</string>
+    <string name="favorite_stations_error_loading">Unable to load favorite stations.</string>
+    <string name="favorite_stations_retry">Refresh</string>
+    <string name="favorite_stations_back_content_description">Back to search</string>
 </resources>

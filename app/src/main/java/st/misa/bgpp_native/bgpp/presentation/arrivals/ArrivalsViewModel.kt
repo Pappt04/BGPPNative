@@ -17,14 +17,21 @@ import st.misa.bgpp_native.bgpp.domain.model.Line
 import st.misa.bgpp_native.bgpp.domain.model.Station
 import st.misa.bgpp_native.bgpp.domain.repository.BGPPDataRepository
 import st.misa.bgpp_native.bgpp.domain.repository.StationDBRepository
+import st.misa.bgpp_native.bgpp.domain.notifications.ArrivalNotificationManager
+import st.misa.bgpp_native.bgpp.domain.notifications.ArrivalNotificationSpec
+import st.misa.bgpp_native.core.domain.location.LocationRepository
+import st.misa.bgpp_native.core.domain.model.Coords
 import st.misa.bgpp_native.core.domain.util.NetworkError
 import st.misa.bgpp_native.core.domain.util.Result
 import st.misa.bgpp_native.core.domain.util.StringProvider
+import st.misa.bgpp_native.bgpp.presentation.arrivals.components.NotificationMode
 
 class ArrivalsViewModel(
     private val remoteRepository: BGPPDataRepository,
     private val stationRepository: StationDBRepository,
+    private val locationRepository: LocationRepository,
     private val stringProvider: StringProvider,
+    private val notificationManager: ArrivalNotificationManager,
     private val args: Args,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : ViewModel() {
@@ -107,7 +114,8 @@ class ArrivalsViewModel(
         _state.update {
             it.copy(
                 stationName = station.name,
-                isFavorite = station.favorite
+                isFavorite = station.favorite,
+                stationCoords = station.coords
             )
         }
 
@@ -138,6 +146,63 @@ class ArrivalsViewModel(
                     )
                 }
             }
+        }
+    }
+
+    fun onOpenMap() {
+        viewModelScope.launch {
+            when (val locationResult = locationRepository.getCurrentLocation()) {
+                is Result.Success -> {
+                    _state.update { it.copy(userLocation = locationResult.data) }
+                }
+                else -> Unit
+            }
+        }
+    }
+
+    suspend fun refreshUserLocation(): Coords? {
+        val locationResult = withContext(ioDispatcher) {
+            locationRepository.getCurrentLocation()
+        }
+        return when (locationResult) {
+            is Result.Success -> {
+                _state.update { it.copy(userLocation = locationResult.data) }
+                locationResult.data
+            }
+            is Result.Error -> null
+        }
+    }
+
+    fun hasLocationPermission(): Boolean = locationRepository.hasLocationPermission()
+
+    fun registerArrivalNotification(
+        lineNumber: String,
+        lineName: String,
+        arrival: ArrivalUi,
+        mode: NotificationMode,
+        threshold: Int
+    ) {
+        viewModelScope.launch {
+            val station = currentStation ?: withContext(ioDispatcher) {
+                stationRepository.getStationById(args.city, args.stationId)
+            } ?: return@launch
+
+            val positiveThreshold = threshold.coerceAtLeast(1)
+            val trigger = when (mode) {
+                NotificationMode.Minutes -> ArrivalNotificationSpec.Minutes(positiveThreshold)
+                NotificationMode.Stations -> ArrivalNotificationSpec.Stations(positiveThreshold)
+            }
+
+            val spec = ArrivalNotificationSpec(
+                id = ArrivalNotificationSpec.buildId(station, arrival.garageNo, trigger),
+                station = station,
+                lineNumber = lineNumber,
+                lineName = lineName,
+                garageNumber = arrival.garageNo,
+                trigger = trigger
+            )
+
+            notificationManager.schedule(spec)
         }
     }
 

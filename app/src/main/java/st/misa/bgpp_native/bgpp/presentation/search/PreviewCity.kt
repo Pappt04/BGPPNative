@@ -26,11 +26,13 @@ fun SearchScreenPreview() {
                 preferences = SearchPreferences(cityId = PreviewCity.id)
             ),
             onQueryChange = {},
+            onOpenFavorites = {},
             onOpenPreferences = {},
             onClosePreferences = {},
             onApplyPreferences = {},
             onRefresh = {},
-            onStationSelected = {}
+            onStationSelected = {},
+            onOpenStationExplorer = {}
         )
     }
 }

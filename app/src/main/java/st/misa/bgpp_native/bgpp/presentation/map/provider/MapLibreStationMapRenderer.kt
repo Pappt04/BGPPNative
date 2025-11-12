@@ -40,6 +40,7 @@ import st.misa.bgpp_native.bgpp.presentation.map.StationMapRenderState
 import st.misa.bgpp_native.bgpp.presentation.map.StationMapRenderer
 import st.misa.bgpp_native.core.domain.model.BoundingBox
 import kotlin.math.roundToInt
+import androidx.core.graphics.createBitmap
 
 class MapLibreStationMapRenderer(
     private val styleProvider: StationMapStyleProvider
@@ -90,6 +91,7 @@ class MapLibreStationMapRenderer(
                 readyMap.uiSettings.apply {
                     isRotateGesturesEnabled = false
                 }
+                readyMap.setMaxZoomPreference(MAX_ZOOM)
                 val styleJson = styleProvider.resolveStyle(context)
                 val defaultStyle = "https://demotiles.maplibre.org/style.json"
                 val styleBuilder = styleJson
@@ -98,7 +100,7 @@ class MapLibreStationMapRenderer(
                     ?: Style.Builder().fromUri(defaultStyle)
                 readyMap.setStyle(styleBuilder) {
                     mapStyleLoaded = true
-                    currentZoom = readyMap.cameraPosition.zoom.toDouble()
+                    currentZoom = readyMap.cameraPosition.zoom
                 }
             }
             mapView.getMapAsync(callback)
@@ -111,7 +113,7 @@ class MapLibreStationMapRenderer(
         DisposableEffect(mapLibreMap) {
             val map = mapLibreMap ?: return@DisposableEffect onDispose { }
             val listener = MapLibreMap.OnCameraIdleListener {
-                currentZoom = map.cameraPosition.zoom.toDouble()
+                currentZoom = map.cameraPosition.zoom
                 map.currentBoundingBox()?.let(onViewportChanged)
             }
             map.addOnCameraIdleListener(listener)
@@ -286,7 +288,7 @@ class MapLibreStationMapRenderer(
             }
         } else {
             val center = cameraState.center ?: return
-            val zoom = cameraState.zoom ?: 14.0
+            val zoom = (cameraState.zoom ?: DEFAULT_ZOOM).coerceAtMost(MAX_ZOOM)
             map.animateCamera(
                 CameraUpdateFactory.newLatLngZoom(LatLng(center.lat, center.lon), zoom),
                 800
@@ -310,7 +312,7 @@ class MapLibreStationMapRenderer(
             DrawableCompat.setTint(drawable, iconArgb)
             val density = context.resources.displayMetrics.density
             val sizePx = (sizeDp * density).roundToInt().coerceAtLeast(2)
-            val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+            val bitmap = createBitmap(sizePx, sizePx)
             val canvas = Canvas(bitmap)
 
             val circlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -338,7 +340,7 @@ class MapLibreStationMapRenderer(
     ): Icon {
         val density = context.resources.displayMetrics.density
         val sizePx = (sizeDp * density).roundToInt().coerceAtLeast(12)
-        val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+        val bitmap = createBitmap(sizePx, sizePx)
         val canvas = Canvas(bitmap)
         val radius = sizePx / 2f
 
@@ -394,7 +396,7 @@ class MapLibreStationMapRenderer(
         private const val USER_MARKER_SNIPPET = "__user_marker__"
         private const val DEFAULT_ZOOM = 14.0
         private const val MIN_ZOOM = 5.0
-        private const val MAX_ZOOM = 19.0
+        private const val MAX_ZOOM = 18.5
 
         private fun markerSizeForZoom(zoom: Double, baseSize: Float): Float {
             val clamped = zoom.coerceIn(MIN_ZOOM, MAX_ZOOM)
